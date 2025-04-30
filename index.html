@@ -15,36 +15,30 @@
       --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: sans-serif;
       background: var(--background-color);
       color: var(--text-color);
-      line-height: 1.6;
       padding: 20px;
-      margin: 0;
-      min-height: 100vh;
     }
-    .container { max-width: 800px; margin: 0 auto; padding: 0 15px; }
-    h1 { text-align: center; color: var(--text-color); font-size: 2em; margin: 1em 0; }
+    h1 {
+      text-align: center;
+      margin: 20px 0;
+    }
     .main-button {
       display: block;
       width: 100%;
       max-width: 300px;
-      margin: 15px auto;
+      margin: 10px auto;
       padding: 15px;
-      font-size: 1.1em;
-      background-color: var(--primary-color);
+      background: var(--primary-color);
       color: white;
       border: none;
       border-radius: var(--border-radius);
+      font-size: 1.1em;
       cursor: pointer;
-      transition: all 0.3s ease;
-      text-align: center;
-      text-decoration: none;
     }
     .main-button:hover {
       background-color: var(--primary-hover);
-      transform: translateY(-2px);
-      box-shadow: var(--box-shadow);
     }
     .ranking {
       margin-top: 40px;
@@ -55,7 +49,6 @@
     }
     .ranking h2 {
       text-align: center;
-      color: var(--text-color);
       margin-bottom: 25px;
     }
     .ranking-list {
@@ -66,17 +59,17 @@
     .ranking-list li {
       padding: 15px;
       font-size: 1.1em;
-      border-bottom: 1px solid #eee;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: background-color 0.2s ease;
+      border-bottom: 1px solid #eee;
     }
-    .ranking-list li:last-child { border-bottom: none; }
-    .ranking-list li:hover { background-color: #f8f9fa; }
-    .gold { color: #FFD700; font-weight: bold; }
-    .silver { color: #C0C0C0; font-weight: bold; }
-    .bronze { color: #CD7F32; font-weight: bold; }
+    .ranking-list li:last-child {
+      border-bottom: none;
+    }
+    .gold { background-color: #fff8dc; font-weight: bold; }
+    .silver { background-color: #f0f0f0; font-weight: bold; }
+    .bronze { background-color: #f5e1c0; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -86,7 +79,7 @@
   <button class="main-button" onclick="location.href='history.html'">③ 対戦履歴</button>
   <button class="main-button" onclick="location.href='stats.html'">④ 成績表（個人成績）</button>
 
-  <div id="ranking" class="ranking">
+  <div class="ranking">
     <h2>🏆 総合ポイントランキング 🏆</h2>
     <ul class="ranking-list" id="rankingList"></ul>
   </div>
@@ -125,17 +118,18 @@
       });
 
       const sorted = Object.entries(playerStats).sort((a, b) => b[1] - a[1]);
-      const list = document.getElementById('rankingList');
-      list.innerHTML = '';
+      const list = document.getElementById("rankingList");
+      list.innerHTML = "";
 
       sorted.forEach(([name, point], index) => {
-        const li = document.createElement('li');
-        let rankClass = '';
-        if (index === 0) rankClass = 'gold';
-        else if (index === 1) rankClass = 'silver';
-        else if (index === 2) rankClass = 'bronze';
+        const li = document.createElement("li");
+        let medal = "", rankClass = "";
+        if (index === 0) { medal = "🥇"; rankClass = "gold"; }
+        else if (index === 1) { medal = "🥈"; rankClass = "silver"; }
+        else if (index === 2) { medal = "🥉"; rankClass = "bronze"; }
 
-        li.innerHTML = `<span class="${rankClass}">${index + 1}位 ${name}</span><span>${point >= 0 ? '+' : ''}${point}pt</span>`;
+        li.className = rankClass;
+        li.innerHTML = `<span>${medal} ${index + 1}位 ${name}</span><span>${point >= 0 ? "+" : ""}${point}pt</span>`;
         list.appendChild(li);
       });
     }
