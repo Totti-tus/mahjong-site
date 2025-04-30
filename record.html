@@ -81,8 +81,10 @@
         return;
       }
       const sessionDoc = doc(db, "sessions", currentSessionId);
-      const sessionSnap = await getDocs(sessionsRef);
-      const sessionData = (await sessionSnap.docs.find(d => d.id === currentSessionId)).data();
+      import { getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+      const sessionSnap = await getDoc(sessionDoc);
+      const sessionData = sessionSnap.data();
       const updatedGames = sessionData.games.concat([{ date, players }]);
       const updatedPlayers = Array.from(new Set(sessionData.players.concat(players.map(p => p.name))));
       await updateDoc(sessionDoc, {
