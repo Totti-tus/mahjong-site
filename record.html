@@ -6,7 +6,7 @@
   <title>成績登録</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, updateDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, updateDoc, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
@@ -81,8 +81,7 @@
         return;
       }
       const sessionDoc = doc(db, "sessions", currentSessionId);
-      import { getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+      
       const sessionSnap = await getDoc(sessionDoc);
       const sessionData = sessionSnap.data();
       const updatedGames = sessionData.games.concat([{ date, players }]);
