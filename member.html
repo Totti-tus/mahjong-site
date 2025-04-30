@@ -1,0 +1,142 @@
+<!-- member.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>メンバー登録</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .main-button {
+      display: block;
+      width: 100%;
+      max-width: 300px;
+      margin: 20px auto;
+      padding: 15px;
+      font-size: 18px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .main-button:hover {
+      background-color: #0056b3;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      background: white;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    span.name {
+      cursor: pointer;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>メンバー登録</h1>
+  <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+
+  <input type="text" id="newPlayerName" placeholder="プレイヤー名を入力">
+  <button class="main-button" onclick="addPlayer()">追加</button>
+
+  <ul id="playerList"></ul>
+
+  <script>
+    let playerNames = [];
+
+    function loadPlayers() {
+      playerNames = JSON.parse(localStorage.getItem('playerNames') || '[]');
+    }
+
+    function savePlayers() {
+      localStorage.setItem('playerNames', JSON.stringify(playerNames));
+    }
+
+    function renderPlayerList() {
+      const list = document.getElementById('playerList');
+      list.innerHTML = '';
+
+      playerNames.forEach(name => {
+        const li = document.createElement('li');
+        const span = document.createElement('span');
+        span.className = 'name';
+        span.textContent = name;
+        span.onclick = function () {
+          const newName = prompt("新しい名前を入力してください", name);
+          if (newName && newName.trim() && !playerNames.includes(newName.trim())) {
+            renamePlayer(name, newName.trim());
+          } else if (playerNames.includes(newName.trim())) {
+            alert("同じ名前がすでに存在します！");
+          }
+        };
+        li.appendChild(span);
+        list.appendChild(li);
+      });
+    }
+
+    function addPlayer() {
+      const name = document.getElementById('newPlayerName').value.trim();
+      if (!name) {
+        alert("名前を入力してください");
+        return;
+      }
+      if (playerNames.includes(name)) {
+        alert("すでに登録されています");
+        return;
+      }
+      playerNames.push(name);
+      savePlayers();
+      renderPlayerList();
+      document.getElementById('newPlayerName').value = '';
+    }
+
+    function renamePlayer(oldName, newName) {
+      const index = playerNames.indexOf(oldName);
+      if (index !== -1) {
+        playerNames[index] = newName;
+        savePlayers();
+        renderPlayerList();
+      }
+
+      const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+      sessions.forEach(session => {
+        session.players = session.players.map(n => n === oldName ? newName : n);
+        session.games.forEach(game => {
+          game.players.forEach(p => {
+            if (p.name === oldName) p.name = newName;
+          });
+        });
+      });
+      localStorage.setItem('sessions', JSON.stringify(sessions));
+    }
+
+    window.onload = function () {
+      loadPlayers();
+      renderPlayerList();
+    }
+  </script>
+</body>
+</html>

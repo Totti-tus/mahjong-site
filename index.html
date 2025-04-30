@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>麻雀成績管理 - ホーム</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f0f0; padding: 20px; }
+    h1 { text-align: center; }
+    .main-button {
+      display: block;
+      width: 100%;
+      max-width: 300px;
+      margin: 20px auto;
+      padding: 15px;
+      font-size: 18px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .main-button:hover { background-color: #0056b3; }
+    .ranking {
+      margin-top: 40px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .ranking h2 { text-align: center; color: #333; }
+    .ranking-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 20px;
+    }
+    .ranking-list li {
+      padding: 10px;
+      font-size: 18px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .gold { color: #FFD700; font-weight: bold; }
+    .silver { color: #C0C0C0; font-weight: bold; }
+    .bronze { color: #CD7F32; font-weight: bold; }
+  </style>
+</head>
+
+<body>
+<h1>麻雀成績管理</h1>
+
+<button class="main-button" onclick="location.href='member.html'">① メンバー登録</button>
+<button class="main-button" onclick="location.href='record.html'">② 成績登録</button>
+<button class="main-button" onclick="location.href='history.html'">③ 対戦履歴</button>
+<button class="main-button" onclick="location.href='stats.html'">④ 成績表（個人成績）</button>
+
+<div id="ranking" class="ranking">
+  <h2>🏆 総合ポイントランキング 🏆</h2>
+  <ul class="ranking-list" id="rankingList"></ul>
+</div>
+
+<script>
+function buildRanking() {
+  const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+  const playerStats = {};
+
+  sessions.forEach(session => {
+    session.games.forEach(game => {
+      game.players.forEach(p => {
+        if (!playerStats[p.name]) playerStats[p.name] = 0;
+        playerStats[p.name] += p.point;
+      });
+    });
+  });
+
+  const sorted = Object.entries(playerStats)
+    .sort((a, b) => b[1] - a[1]); // ★スライスなし！
+
+  const list = document.getElementById('rankingList');
+  list.innerHTML = '';
+
+  sorted.forEach(([name, point], index) => {
+    const li = document.createElement('li');
+    let rankClass = '';
+    if (index === 0) rankClass = 'gold';
+    else if (index === 1) rankClass = 'silver';
+    else if (index === 2) rankClass = 'bronze';
+
+    li.innerHTML = `<span class="${rankClass}">${index + 1}位 ${name}</span><span>${point >= 0 ? '+' : ''}${point}pt</span>`;
+    list.appendChild(li);
+  });
+}
+
+window.onload = buildRanking;
+</script>
+
+</body>
+</html>

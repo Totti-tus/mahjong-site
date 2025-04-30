@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>成績登録</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      text-align: center;
+      color: #333;
+    }
+    .form-section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    label, select, input {
+      display: block;
+      width: 100%;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+    select, input[type="number"], input[type="date"] {
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .main-button {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .main-button:hover {
+      background-color: #0056b3;
+    }
+    ul li {
+      background: white;
+      margin-bottom: 10px;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      font-size: 16px;
+      position: relative;
+    }
+    .action-buttons {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    .action-buttons button {
+      margin-left: 5px;
+      padding: 5px 10px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      color: white;
+    }
+    .edit-button { background-color: #28a745; }
+    .delete-button { background-color: #dc3545; }
+  </style>
+</head>
+<body>
+
+<h1>成績登録</h1>
+<button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+<button class="main-button" onclick="location.href='history.html'">過去の対戦履歴を見る</button>
+<button class="main-button" onclick="deleteCurrentSession()">この回を削除する</button>
+
+<div class="form-section">
+  <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
+</div>
+
+<div class="form-section">
+  <label>日付：
+    <input type="date" id="gameDate">
+  </label>
+
+  <h3>参加者とポイント</h3>
+  <select id="player1"></select>
+  <input type="number" id="point1" placeholder="ポイント" oninput="changeColor(this)">
+  <select id="player2"></select>
+  <input type="number" id="point2" placeholder="ポイント" oninput="changeColor(this)">
+  <select id="player3"></select>
+  <input type="number" id="point3" placeholder="ポイント" oninput="changeColor(this)">
+  <select id="player4"></select>
+  <input type="number" id="point4" placeholder="ポイント" oninput="changeColor(this)">
+
+  <button class="main-button" onclick="saveRecord()">保存</button>
+</div>
+
+<ul id="historyList"></ul>
+
+<script>
+let sessions = [];
+let currentSessionId = null;
+let playerNames = [];
+let editingIndex = null; // 編集モード用
+
+function loadPlayers() {
+  playerNames = JSON.parse(localStorage.getItem('playerNames') || '[]');
+}
+
+function updatePlayerSelects() {
+  const ids = ['player1', 'player2', 'player3', 'player4'];
+  ids.forEach(id => {
+    const select = document.getElementById(id);
+    const selected = select.value;
+    select.innerHTML = '';
+    playerNames.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+    if (playerNames.includes(selected)) {
+      select.value = selected;
+    }
+  });
+}
+
+function changeColor(input) {
+  const value = parseInt(input.value, 10);
+  input.style.color = isNaN(value) ? 'black' : (value > 0 ? 'blue' : (value < 0 ? 'red' : 'black'));
+}
+
+function startNewSession() {
+  const selectedDate = document.getElementById('gameDate').value;
+  const title = selectedDate || (new Date()).toISOString().split('T')[0];
+  const newSession = { title, players: [], games: [] };
+
+  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+  sessions.push(newSession);
+  currentSessionId = sessions.length - 1;
+  localStorage.setItem('sessions', JSON.stringify(sessions));
+  alert(`新しい回「${title}」を開始しました！`);
+  renderHistory();
+}
+
+function saveRecord() {
+  if (currentSessionId === null) {
+    alert("まず「新しい回を開始する」を押してください！");
+    return;
+  }
+
+  const date = document.getElementById('gameDate').value;
+  const players = [
+    { name: player1.value, point: Number(point1.value) },
+    { name: player2.value, point: Number(point2.value) },
+    { name: player3.value, point: Number(point3.value) },
+    { name: player4.value, point: Number(point4.value) }
+  ];
+
+  const sum = players.reduce((acc, p) => acc + p.point, 0);
+  if (Math.abs(sum) > 0.001) {
+    alert("ポイント合計が±0ではありません！");
+    return;
+  }
+
+  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+
+  if (editingIndex !== null) {
+    sessions[currentSessionId].games[editingIndex] = { date, players };
+    editingIndex = null;
+  } else {
+    sessions[currentSessionId].games.push({ date, players });
+    if (sessions[currentSessionId].players.length === 0) {
+      sessions[currentSessionId].players = players.map(p => p.name);
+    }
+  }
+
+  localStorage.setItem('sessions', JSON.stringify(sessions));
+  clearForm();
+  renderHistory();
+}
+
+function clearForm() {
+  [point1, point2, point3, point4].forEach(p => {
+    p.value = '';
+    p.style.color = 'black';
+  });
+  editingIndex = null;
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  if (currentSessionId === null) return;
+  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+  const games = sessions[currentSessionId]?.games || [];
+
+  games.forEach((g, idx) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      ${g.date}：${g.players.map(p => `${p.name}(${p.point})`).join('、')}
+      <div class="action-buttons">
+        <button class="edit-button" onclick="editRecord(${idx})">編集</button>
+        <button class="delete-button" onclick="deleteRecord(${idx})">削除</button>
+      </div>
+    `;
+    list.appendChild(li);
+  });
+}
+
+function editRecord(index) {
+  const g = sessions[currentSessionId].games[index];
+  document.getElementById('gameDate').value = g.date;
+  [player1, player2, player3, player4].forEach((sel, i) => sel.value = g.players[i].name);
+  [point1, point2, point3, point4].forEach((input, i) => {
+    input.value = g.players[i].point;
+    changeColor(input);
+  });
+  editingIndex = index;
+}
+
+function deleteRecord(index) {
+  if (!confirm('この半荘を削除してもよろしいですか？')) return;
+  sessions[currentSessionId].games.splice(index, 1);
+  localStorage.setItem('sessions', JSON.stringify(sessions));
+  renderHistory();
+}
+
+function deleteCurrentSession() {
+  if (!confirm('この回をまるごと削除してもよろしいですか？')) return;
+  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+  sessions.splice(currentSessionId, 1);
+  localStorage.setItem('sessions', JSON.stringify(sessions));
+  currentSessionId = sessions.length - 1;
+  alert('回を削除しました！');
+  renderHistory();
+}
+
+window.onload = function() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('gameDate').value = `${yyyy}-${mm}-${dd}`;
+
+  loadPlayers();
+  updatePlayerSelects();
+
+  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+  currentSessionId = sessions.length - 1;
+  renderHistory();
+}
+</script>
+
+</body>
+</html>

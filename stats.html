@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>総合成績 / 個人成績</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f0f0; padding: 20px; }
+    h1, h2 { text-align: center; color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 30px; background: white; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background: #e0e0e0; }
+    .main-button { display: block; width: 300px; margin: 20px auto; padding: 15px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; }
+    .main-button:hover { background: #0056b3; }
+    .clickable-name { cursor: pointer; color: #007bff; text-decoration: underline; }
+    .player-detail { background: #e6f4ea; border-radius: 10px; padding: 20px; margin-top: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    canvas { margin-top: 20px; }
+    .subsection { margin-top: 20px; padding-top: 10px; border-top: 1px solid #ccc; }
+    .highlight-max { background-color: #d0e7ff; }
+    .highlight-min { background-color: #ffdede; }
+  </style>
+</head>
+<body>
+<h1>総合成績 / 個人成績</h1>
+<button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+
+<table id="statsTable">
+  <thead>
+    <tr>
+      <th>プレイヤー</th>
+      <th>対局数</th>
+      <th>合計ポイント</th>
+      <th>1位回数</th>
+      <th>2位回数</th>
+      <th>3位回数</th>
+      <th>4位回数</th>
+      <th>トップ率</th>
+      <th>連対率</th>
+      <th>ラス回避率</th>
+      <th>平均着順</th>
+      <th>平均ポイント</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div id="playerDetail"></div>
+
+<script>
+let playerStats = {};
+
+function loadSessions() {
+  const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+  sessions.forEach((session, sessionIndex) => {
+    session.games.forEach((game, gameIndex) => {
+      const sorted = [...game.players].sort((a, b) => b.point - a.point);
+      sorted.forEach((p, i) => {
+        if (!playerStats[p.name]) {
+          playerStats[p.name] = {
+            name: p.name, games: 0, tops: 0, seconds: 0, thirds: 0, fourths: 0,
+            totalRank: 0, totalPoint: 0, pointHistory: [], rankHistory: [],
+            maxScore: { point: -Infinity, date: '', sessionNo: 0, gameNo: 0 },
+            minScore: { point: Infinity, date: '', sessionNo: 0, gameNo: 0 }
+          };
+        }
+        const ps = playerStats[p.name];
+        ps.games++;
+        ps.totalRank += (i + 1);
+        ps.totalPoint += p.point;
+        ps.pointHistory.push(ps.totalPoint);
+        ps.rankHistory.push(i + 1);
+
+        if (p.point > ps.maxScore.point) {
+          ps.maxScore = { point: p.point, date: session.date, sessionNo: sessionIndex + 1, gameNo: gameIndex + 1 };
+        }
+        if (p.point < ps.minScore.point) {
+          ps.minScore = { point: p.point, date: session.date, sessionNo: sessionIndex + 1, gameNo: gameIndex + 1 };
+        }
+
+        if (i === 0) ps.tops++;
+        if (i === 1) ps.seconds++;
+        if (i === 2) ps.thirds++;
+        if (i === 3) ps.fourths++;
+      });
+    });
+  });
+}
+
+function createStatsTable() {
+  const tbody = document.querySelector('#statsTable tbody');
+  tbody.innerHTML = '';
+  const players = Object.values(playerStats);
+
+  players.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="clickable-name" onclick="viewPlayerDetail('${p.name}')">${p.name}</span></td>
+      <td>${p.games}</td>
+      <td>${p.totalPoint >= 0 ? '+' : ''}${p.totalPoint}</td>
+      <td>${p.tops}</td>
+      <td>${p.seconds}</td>
+      <td>${p.thirds}</td>
+      <td>${p.fourths}</td>
+      <td>${((p.tops / p.games) * 100).toFixed(1)}%</td>
+      <td>${(((p.tops + p.seconds) / p.games) * 100).toFixed(1)}%</td>
+      <td>${(((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1)}%</td>
+      <td>${(p.totalRank / p.games).toFixed(2)}</td>
+      <td>${(p.totalPoint / p.games).toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  applyHighlight(players);
+}
+
+function applyHighlight(players) {
+  const rows = document.querySelectorAll('#statsTable tbody tr');
+  const fields = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+  fields.forEach(idx => {
+    const values = Array.from(rows).map(row => parseFloat(row.children[idx].textContent.replace('+', '').replace('%', '')));
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    rows.forEach((row, i) => {
+      const td = row.children[idx];
+      if (values[i] === max) td.classList.add('highlight-max');
+      if (values[i] === min) td.classList.add('highlight-min');
+    });
+  });
+}
+
+function viewPlayerDetail(name) {
+  const p = playerStats[name];
+  if (!p) return;
+  const detailHtml = `
+    <div class="player-detail">
+      <h2>${p.name}の成績</h2>
+      <p>対局数: ${p.games}回</p>
+      <p>合計ポイント: ${p.totalPoint >= 0 ? '+' : ''}${p.totalPoint}点</p>
+      <p>平均ポイント: ${(p.totalPoint / p.games).toFixed(2)}点</p>
+      <p>トップ率: ${((p.tops / p.games) * 100).toFixed(1)}%</p>
+      <p>連対率: ${(((p.tops + p.seconds) / p.games) * 100).toFixed(1)}%</p>
+      <p>ラス回避率: ${(((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1)}%</p>
+      <p>最高得点: ＋${p.maxScore.point}点 (${p.maxScore.date} 第${p.maxScore.sessionNo}回 ${p.maxScore.gameNo}半荘目)</p>
+      <p>最低得点: ${p.minScore.point}点 (${p.minScore.date} 第${p.minScore.sessionNo}回 ${p.minScore.gameNo}半荘目)</p>
+      <div class="subsection">
+        <button class="main-button" onclick="toggleGraphs('${p.name}')">▶ グラフを見る</button>
+        <div id="graphArea" style="display:none;">
+          <canvas id="pointChart"></canvas>
+          <canvas id="rankChart"></canvas>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('playerDetail').innerHTML = detailHtml;
+}
+
+function toggleGraphs(name) {
+  const area = document.getElementById('graphArea');
+  if (area.style.display === 'none') {
+    area.style.display = 'block';
+    drawGraphs(name);
+  } else {
+    area.style.display = 'none';
+  }
+}
+
+function drawGraphs(name) {
+  const p = playerStats[name];
+  const ctx1 = document.getElementById('pointChart').getContext('2d');
+  new Chart(ctx1, {
+    type: 'line',
+    data: { labels: p.pointHistory.map((_, i) => i + 1), datasets: [{ label: '累積ポイント', data: p.pointHistory, borderColor: 'blue', fill: false }] },
+    options: { responsive: true, scales: { x: { title: { display: true, text: '半荘数' }, ticks: { stepSize: 5 } }, y: { title: { display: true, text: '累積ポイント' } } } }
+  });
+
+  const avgRanks = p.rankHistory.map((_, i, arr) => (arr.slice(0, i + 1).reduce((a, b) => a + b, 0) / (i + 1)).toFixed(2));
+  const ctx2 = document.getElementById('rankChart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'line',
+    data: { labels: avgRanks.map((_, i) => i + 1), datasets: [{ label: '平均着順推移', data: avgRanks, borderColor: 'green', fill: false }] },
+    options: { responsive: true, scales: { x: { title: { display: true, text: '半荘数' }, ticks: { stepSize: 5 } }, y: { reverse: true, ticks: { stepSize: 0.5, min: 1, max: 4 }, title: { display: true, text: '平均着順' } } } }
+  });
+}
+
+window.onload = () => {
+  loadSessions();
+  createStatsTable();
+  const firstPlayer = Object.keys(playerStats)[0];
+  if (firstPlayer) {
+    viewPlayerDetail(firstPlayer);
+  }
+};
+</script>
+</body>
+</html>
