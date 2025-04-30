@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>メンバー管理</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>メンバー登録</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
@@ -68,7 +68,7 @@
           };
 
           const del = document.createElement("button");
-          del.textContent = "🗑️";
+          del.textContent = "🔚";
           del.onclick = async () => {
             if (confirm("削除しますか？")) {
               await deleteDoc(doc(playersRef, docSnap.id));
@@ -93,10 +93,16 @@
     button { padding: 6px 10px; font-size: 14px; margin-left: 5px; cursor: pointer; }
     ul { list-style: none; padding: 0; max-width: 400px; margin: 0 auto; }
     li { background: white; padding: 10px; margin-bottom: 5px; border-radius: 5px; }
+    .top-nav { text-align: center; margin-bottom: 20px; }
+    .main-button { padding: 10px 20px; font-size: 16px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    .main-button:hover { background-color: #0056b3; }
   </style>
 </head>
 <body>
   <h1>メンバー登録</h1>
+  <div class="top-nav">
+    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+  </div>
   <div class="form">
     <input type="text" id="playerName" placeholder="名前を入力">
     <button id="addButton">追加</button>
