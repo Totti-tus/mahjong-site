@@ -6,7 +6,7 @@
   <title>成績登録</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
@@ -20,152 +20,82 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    window.db = db;
-    window.addDoc = addDoc;
-    window.collection = collection;
-    window.onSnapshot = onSnapshot;
+    const playersRef = collection(db, "players");
+
+    async function loadPlayers() {
+      const snapshot = await getDocs(playersRef);
+      const names = snapshot.docs.map(doc => doc.data().name);
+      const container = document.getElementById("playersContainer");
+      container.innerHTML = "";
+      names.forEach((name, index) => {
+        const row = document.createElement("div");
+        row.className = "player-row";
+
+        const select = document.createElement("select");
+        names.forEach(n => {
+          const opt = document.createElement("option");
+          opt.value = n;
+          opt.textContent = n;
+          if (n === name) opt.selected = true;
+          select.appendChild(opt);
+        });
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.placeholder = "ポイント";
+
+        row.appendChild(select);
+        row.appendChild(input);
+        container.appendChild(row);
+      });
+    }
+
+    async function saveRecord() {
+      const date = document.getElementById('gameDate').value;
+      const rows = document.querySelectorAll(".player-row");
+      const players = Array.from(rows).map(row => {
+        const name = row.querySelector("select").value;
+        const point = Number(row.querySelector("input").value);
+        return { name, point };
+      });
+      const sum = players.reduce((acc, p) => acc + p.point, 0);
+      if (Math.abs(sum) > 0.001) {
+        alert("ポイント合計が±0ではありません！");
+        return;
+      }
+      const session = {
+        title: date,
+        players: players.map(p => p.name),
+        games: [ { date, players } ]
+      };
+      await addDoc(collection(db, "sessions"), session);
+      alert("保存しました！");
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const today = new Date();
+      document.getElementById('gameDate').value = today.toISOString().split('T')[0];
+      loadPlayers();
+    });
   </script>
   <style>
     body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
-    h1 { text-align: center; color: #333; }
-    .main-button {
-      display: block;
-      width: 100%;
-      max-width: 300px;
-      margin: 10px auto;
-      padding: 15px;
-      font-size: 18px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-    }
+    h1 { text-align: center; }
+    .form-section { background: white; padding: 20px; max-width: 500px; margin: 20px auto; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    label, select, input[type="number"], input[type="date"] { display: block; width: 100%; margin-bottom: 15px; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
+    .main-button { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 15px; font-size: 18px; background-color: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; }
     .main-button:hover { background-color: #0056b3; }
-    .form-section {
-      background: white;
-      padding: 20px;
-      margin: 20px auto;
-      max-width: 500px;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    label, select, input[type="number"], input[type="date"] {
-      display: block;
-      width: 100%;
-      margin-bottom: 15px;
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-    .highlight { font-weight: bold; font-size: 20px; }
-    #realtimeDisplay {
-      max-width: 500px;
-      margin: 0 auto;
-      background: white;
-      padding: 10px;
-      border-radius: 10px;
-      margin-top: 30px;
-      font-size: 15px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+    .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .player-row select, .player-row input { flex: 1; }
   </style>
 </head>
 <body>
-
-<h1>成績登録</h1>
-<button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
-
-<div class="form-section">
-  <label>日付：<input type="date" id="gameDate"></label>
-
-  <label>プレイヤー1：</label>
-  <select id="player1"></select>
-  <input type="number" id="point1" placeholder="ポイント">
-
-  <label>プレイヤー2：</label>
-  <select id="player2"></select>
-  <input type="number" id="point2" placeholder="ポイント">
-
-  <label>プレイヤー3：</label>
-  <select id="player3"></select>
-  <input type="number" id="point3" placeholder="ポイント">
-
-  <label>プレイヤー4：</label>
-  <select id="player4"></select>
-  <input type="number" id="point4" placeholder="ポイント">
-
-  <button class="main-button" onclick="saveRecord()">保存</button>
-</div>
-
-<div id="realtimeDisplay"></div>
-
-<script type="module">
-  import { collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('gameDate').value = `${yyyy}-${mm}-${dd}`;
-    loadPlayers();
-    setupRealtimeListener();
-  });
-
-  function loadPlayers() {
-    const names = JSON.parse(localStorage.getItem('playerNames') || '[]');
-    ['player1','player2','player3','player4'].forEach(id => {
-      const select = document.getElementById(id);
-      select.innerHTML = '';
-      names.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-      });
-    });
-  }
-
-  function saveRecord() {
-    const date = document.getElementById('gameDate').value;
-    const players = [
-      { name: player1.value, point: Number(point1.value) },
-      { name: player2.value, point: Number(point2.value) },
-      { name: player3.value, point: Number(point3.value) },
-      { name: player4.value, point: Number(point4.value) }
-    ];
-
-    const sum = players.reduce((acc, p) => acc + p.point, 0);
-    if (Math.abs(sum) > 0.001) {
-      alert("ポイント合計が±0ではありません！");
-      return;
-    }
-
-    const session = {
-      title: date,
-      players: players.map(p => p.name),
-      games: [ { date, players } ]
-    };
-
-    addDoc(collection(window.db, "sessions"), session)
-      .then(() => alert("保存しました！"))
-      .catch(error => alert("保存に失敗しました: " + error));
-  }
-
-  function setupRealtimeListener() {
-    const display = document.getElementById('realtimeDisplay');
-    onSnapshot(collection(window.db, "sessions"), (snapshot) => {
-      let html = '<h3>📡 リアルタイムで保存されたセッション一覧</h3>';
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        html += `<div><strong>${data.title}</strong>: ${data.games[0].players.map(p => `${p.name}(${p.point})`).join('、')}</div>`;
-      });
-      display.innerHTML = html;
-    });
-  }
-</script>
-
+  <h1>成績登録</h1>
+  <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+  <div class="form-section">
+    <label>日付：<input type="date" id="gameDate"></label>
+    <div id="playersContainer"></div>
+    <button class="main-button" onclick="saveRecord()">保存</button>
+  </div>
 </body>
 </html>
