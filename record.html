@@ -27,7 +27,7 @@
       const names = snapshot.docs.map(doc => doc.data().name);
       const container = document.getElementById("playersContainer");
       container.innerHTML = "";
-      names.forEach((name, index) => {
+      for (let i = 0; i < 4; i++) {
         const row = document.createElement("div");
         row.className = "player-row";
 
@@ -36,7 +36,6 @@
           const opt = document.createElement("option");
           opt.value = n;
           opt.textContent = n;
-          if (n === name) opt.selected = true;
           select.appendChild(opt);
         });
 
@@ -47,7 +46,7 @@
         row.appendChild(select);
         row.appendChild(input);
         container.appendChild(row);
-      });
+      }
     }
 
     async function saveRecord() {
