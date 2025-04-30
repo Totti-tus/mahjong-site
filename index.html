@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>麻雀成績管理 - ホーム</title>
   <style>
     :root {
@@ -14,7 +14,6 @@
       --border-radius: 12px;
       --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--background-color);
@@ -24,20 +23,8 @@
       margin: 0;
       min-height: 100vh;
     }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 0 15px;
-    }
-
-    h1 {
-      text-align: center;
-      color: var(--text-color);
-      font-size: 2em;
-      margin: 1em 0;
-    }
-
+    .container { max-width: 800px; margin: 0 auto; padding: 0 15px; }
+    h1 { text-align: center; color: var(--text-color); font-size: 2em; margin: 1em 0; }
     .main-button {
       display: block;
       width: 100%;
@@ -54,13 +41,11 @@
       text-align: center;
       text-decoration: none;
     }
-
     .main-button:hover {
       background-color: var(--primary-hover);
       transform: translateY(-2px);
       box-shadow: var(--box-shadow);
     }
-
     .ranking {
       margin-top: 40px;
       background: var(--card-background);
@@ -68,19 +53,16 @@
       border-radius: var(--border-radius);
       box-shadow: var(--box-shadow);
     }
-
     .ranking h2 {
       text-align: center;
       color: var(--text-color);
       margin-bottom: 25px;
     }
-
     .ranking-list {
       list-style: none;
       padding: 0;
       margin: 0;
     }
-
     .ranking-list li {
       padding: 15px;
       font-size: 1.1em;
@@ -90,88 +72,75 @@
       align-items: center;
       transition: background-color 0.2s ease;
     }
-
-    .ranking-list li:last-child {
-      border-bottom: none;
-    }
-
-    .ranking-list li:hover {
-      background-color: #f8f9fa;
-    }
-
+    .ranking-list li:last-child { border-bottom: none; }
+    .ranking-list li:hover { background-color: #f8f9fa; }
     .gold { color: #FFD700; font-weight: bold; }
     .silver { color: #C0C0C0; font-weight: bold; }
     .bronze { color: #CD7F32; font-weight: bold; }
-
-    @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-      
-      .main-button {
-        font-size: 1em;
-        padding: 12px;
-      }
-
-      .ranking {
-        padding: 15px;
-      }
-
-      .ranking-list li {
-        font-size: 0.9em;
-        padding: 12px;
-      }
-    }
   </style>
 </head>
-
 <body>
-<h1>麻雀成績管理</h1>
+  <h1>麻雀成績管理</h1>
+  <button class="main-button" onclick="location.href='member.html'">① メンバー登録</button>
+  <button class="main-button" onclick="location.href='record.html'">② 成績登録</button>
+  <button class="main-button" onclick="location.href='history.html'">③ 対戦履歴</button>
+  <button class="main-button" onclick="location.href='stats.html'">④ 成績表（個人成績）</button>
 
-<button class="main-button" onclick="location.href='member.html'">① メンバー登録</button>
-<button class="main-button" onclick="location.href='record.html'">② 成績登録</button>
-<button class="main-button" onclick="location.href='history.html'">③ 対戦履歴</button>
-<button class="main-button" onclick="location.href='stats.html'">④ 成績表（個人成績）</button>
+  <div id="ranking" class="ranking">
+    <h2>🏆 総合ポイントランキング 🏆</h2>
+    <ul class="ranking-list" id="rankingList"></ul>
+  </div>
 
-<div id="ranking" class="ranking">
-  <h2>🏆 総合ポイントランキング 🏆</h2>
-  <ul class="ranking-list" id="rankingList"></ul>
-</div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-<script>
-function buildRanking() {
-  const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-  const playerStats = {};
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+      projectId: "mahjong-app-2e2e9",
+      storageBucket: "mahjong-app-2e2e9.appspot.com",
+      messagingSenderId: "440425002404",
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
+      measurementId: "G-NP9EELBD7R"
+    };
 
-  sessions.forEach(session => {
-    session.games.forEach(game => {
-      game.players.forEach(p => {
-        if (!playerStats[p.name]) playerStats[p.name] = 0;
-        playerStats[p.name] += p.point;
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function buildRanking() {
+      const sessionsRef = collection(db, "sessions");
+      const snapshot = await getDocs(sessionsRef);
+      const playerStats = {};
+
+      snapshot.docs.forEach(doc => {
+        const session = doc.data();
+        if (!session.games) return;
+        session.games.forEach(game => {
+          game.players.forEach(p => {
+            if (!playerStats[p.name]) playerStats[p.name] = 0;
+            playerStats[p.name] += p.point;
+          });
+        });
       });
-    });
-  });
 
-  const sorted = Object.entries(playerStats)
-    .sort((a, b) => b[1] - a[1]); // ★スライスなし！
+      const sorted = Object.entries(playerStats).sort((a, b) => b[1] - a[1]);
+      const list = document.getElementById('rankingList');
+      list.innerHTML = '';
 
-  const list = document.getElementById('rankingList');
-  list.innerHTML = '';
+      sorted.forEach(([name, point], index) => {
+        const li = document.createElement('li');
+        let rankClass = '';
+        if (index === 0) rankClass = 'gold';
+        else if (index === 1) rankClass = 'silver';
+        else if (index === 2) rankClass = 'bronze';
 
-  sorted.forEach(([name, point], index) => {
-    const li = document.createElement('li');
-    let rankClass = '';
-    if (index === 0) rankClass = 'gold';
-    else if (index === 1) rankClass = 'silver';
-    else if (index === 2) rankClass = 'bronze';
+        li.innerHTML = `<span class="${rankClass}">${index + 1}位 ${name}</span><span>${point >= 0 ? '+' : ''}${point}pt</span>`;
+        list.appendChild(li);
+      });
+    }
 
-    li.innerHTML = `<span class="${rankClass}">${index + 1}位 ${name}</span><span>${point >= 0 ? '+' : ''}${point}pt</span>`;
-    list.appendChild(li);
-  });
-}
-
-window.onload = buildRanking;
-</script>
-
+    buildRanking();
+  </script>
 </body>
 </html>
