@@ -235,10 +235,19 @@
       games: updatedGames,
       players: updatedPlayers
     });
-
+     
     alert("対局を保存しました！");
     renderSessionHistory(updatedGames);
+    
+    // ▼ 追加ここから
+    document.querySelectorAll(".player-row input").forEach(input => {
+     input.value = "";
+     updateInputColor(input);
+    });
+    updatePointSum();
     saveInputValues();
+    // ▲ 追加ここまで
+
   }
 
   async function restoreSessionIfExists() {
