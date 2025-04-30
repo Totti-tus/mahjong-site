@@ -26,7 +26,7 @@
 
     async function loadPlayers() {
       const snapshot = await getDocs(playersRef);
-      const names = snapshot.docs.map(doc => doc.data().name);
+      const names = snapshot.docs.map(d => d.data().name);
       const container = document.getElementById("playersContainer");
       container.innerHTML = "";
       for (let i = 0; i < 4; i++) {
@@ -52,45 +52,46 @@
     }
 
     async function startNewSession() {
-      const date = document.getElementById('gameDate').value;
-      const session = {
-        title: date,
-        players: [],
-        games: []
-      };
-      const docRef = await addDoc(sessionsRef, session);
-      currentSessionId = docRef.id;
-      alert("新しい回を開始しました！");
-    }
+      try {
+        const date = document.getElementById('gameDate').value;
+        const session = {
+          title: date,
+          players: [],
+          games: []
+        }
 
     async function saveRecord() {
-      if (!currentSessionId) {
-        alert("先に『新しい回を開始する』を押してください。");
-        return;
+      try {
+        if (!currentSessionId) {
+          alert("先に『新しい回を開始する』を押してください。");
+          return;
+        }
+        const date = document.getElementById('gameDate').value;
+        const rows = document.querySelectorAll(".player-row");
+        const players = Array.from(rows).map(row => {
+          const name = row.querySelector("select").value;
+          const point = Number(row.querySelector("input").value);
+          return { name, point };
+        });
+        const sum = players.reduce((acc, p) => acc + p.point, 0);
+        if (Math.abs(sum) > 0.001) {
+          alert("ポイント合計が±0ではありません！");
+          return;
+        }
+        const sessionDoc = doc(db, "sessions", currentSessionId);
+        const sessionSnap = await getDoc(sessionDoc);
+        const sessionData = sessionSnap.data();
+        const updatedGames = sessionData.games.concat([{ date, players }]);
+        const updatedPlayers = Array.from(new Set(sessionData.players.concat(players.map(p => p.name))));
+        await updateDoc(sessionDoc, {
+          games: updatedGames,
+          players: updatedPlayers
+        });
+        alert("対局を保存しました！");
+      } catch (e) {
+        console.error(e);
+        alert("保存中にエラーが発生しました：" + e.message);
       }
-      const date = document.getElementById('gameDate').value;
-      const rows = document.querySelectorAll(".player-row");
-      const players = Array.from(rows).map(row => {
-        const name = row.querySelector("select").value;
-        const point = Number(row.querySelector("input").value);
-        return { name, point };
-      });
-      const sum = players.reduce((acc, p) => acc + p.point, 0);
-      if (Math.abs(sum) > 0.001) {
-        alert("ポイント合計が±0ではありません！");
-        return;
-      }
-      const sessionDoc = doc(db, "sessions", currentSessionId);
-      
-      const sessionSnap = await getDoc(sessionDoc);
-      const sessionData = sessionSnap.data();
-      const updatedGames = sessionData.games.concat([{ date, players }]);
-      const updatedPlayers = Array.from(new Set(sessionData.players.concat(players.map(p => p.name))));
-      await updateDoc(sessionDoc, {
-        games: updatedGames,
-        players: updatedPlayers
-      });
-      alert("対局を保存しました！");
     }
 
     document.addEventListener('DOMContentLoaded', () => {
