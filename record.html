@@ -151,17 +151,19 @@
   }
 
   function updatePointSum() {
-    const inputs = document.querySelectorAll(".player-row input");
-    let sum = 0;
-    inputs.forEach(input => {
-      const val = parseFloat(input.value);
-      if (!isNaN(val)) sum += val;
-    });
-
-    const display = document.getElementById("pointSumDisplay");
-    display.textContent = `合計点：${sum}`;
-    display.style.color = Math.abs(sum) < 0.001 ? "green" : "red";
+   const inputs = document.querySelectorAll(".player-row input");
+   let sum = 0;
+   inputs.forEach(input => {
+    const val = parseFloat(input.value);
+    if (!isNaN(val)) sum += val;
+   });
+   
+   const display = document.getElementById("pointSumDisplay");
+   const rounded = parseFloat(sum.toFixed(1)); // ← ここで丸める
+   display.textContent = `合計点：${rounded}`;
+   display.style.color = Math.abs(rounded) < 0.001 ? "green" : "red";
   }
+
 
   function updateInputColor(input) {
     const val = parseFloat(input.value);
@@ -221,6 +223,7 @@
     });
 
     const sum = players.reduce((acc, p) => acc + p.point, 0);
+    const roundedSum = parseFloat(sum.toFixed(1));
     if (Math.abs(sum) > 0.001) {
       alert("ポイント合計が±0ではありません！");
       return;
