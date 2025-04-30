@@ -5,123 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>過去の対戦履歴</title>
   <style>
-    :root {
-      --primary-color: #007bff;
-      --primary-hover: #0056b3;
-      --danger-color: #dc3545;
-      --danger-hover: #bd2130;
-      --background-color: #f5f5f5;
-      --card-background: #ffffff;
-      --text-color: #333333;
-      --border-radius: 12px;
-      --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--background-color);
-      color: var(--text-color);
-      line-height: 1.6;
-      padding: 20px;
-      margin: 0;
-      min-height: 100vh;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 0 15px;
-    }
-
-    h1, h3 {
-      text-align: center;
-      color: var(--text-color);
-    }
-
-    .main-button {
-      display: block;
-      width: 100%;
-      max-width: 300px;
-      margin: 15px auto;
-      padding: 15px;
-      font-size: 1.1em;
-      background-color: var(--primary-color);
-      color: white;
+    body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+    .container { max-width: 800px; margin: auto; }
+    .main-button, .delete-button, .edit-button {
+      padding: 10px 15px;
+      border-radius: 8px;
       border: none;
-      border-radius: var(--border-radius);
       cursor: pointer;
-      transition: all 0.3s ease;
-      text-align: center;
+      margin: 5px;
     }
-
-    .main-button:hover {
-      background-color: var(--primary-hover);
-      transform: translateY(-2px);
-      box-shadow: var(--box-shadow);
-    }
-
+    .main-button { background: #007bff; color: white; width: 100%; max-width: 300px; display: block; margin: 20px auto; }
+    .delete-button { background: #dc3545; color: white; }
+    .edit-button { background: #ffc107; color: black; }
     .session-container {
-      background: var(--card-background);
-      margin: 30px 0;
-      padding: 25px;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
+      background: white; padding: 20px; margin: 20px 0;
+      border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-
-    .session-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 15px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid #eee;
-    }
-
-    .participants {
-      color: #666;
-      font-size: 0.9em;
-      margin: 10px 0;
-      padding: 10px;
-      background: #f8f9fa;
-      border-radius: var(--border-radius);
-    }
-
-    .history-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
     .history-item {
-      background: #f8f9fa;
-      margin: 10px 0;
-      padding: 15px;
-      border-radius: var(--border-radius);
-      position: relative;
-      transition: transform 0.2s ease;
+      background: #f9f9f9; padding: 10px; margin-bottom: 10px; border-radius: 6px;
     }
+    .action-buttons { float: right; }
 
-    .history-item:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--box-shadow);
+    /* モーダル */
+    .modal {
+      display: none; position: fixed; z-index: 1000;
+      left: 0; top: 0; width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
     }
-
-    @media (max-width: 600px) {
-      .session-container {
-        padding: 15px;
-      }
-
-      .session-title {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-      }
-
-      .history-item {
-        padding: 12px;
-        font-size: 0.9em;
-      }
+    .modal-content {
+      background-color: white; margin: 10% auto; padding: 20px;
+      border-radius: 10px; width: 90%; max-width: 400px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
+    .modal-content h3 { margin-top: 0; }
+    .modal input { width: 100%; margin-bottom: 10px; padding: 8px; font-size: 16px; }
   </style>
 </head>
 <body>
@@ -131,9 +48,22 @@
     <div id="historyList">読み込み中...</div>
   </div>
 
+  <!-- モーダル -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <h3>半荘の編集</h3>
+      <form id="editForm"></form>
+      <button class="main-button" onclick="saveEdit()">保存</button>
+      <button class="main-button" style="background:#6c757d;" onclick="closeModal()">キャンセル</button>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import {
+      getFirestore, collection, getDocs, doc,
+      deleteDoc, updateDoc
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
@@ -147,51 +77,125 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const sessionsRef = collection(db, "sessions");
+
+    let editState = { sessionId: null, gameIndex: null, original: null };
 
     async function loadSessions() {
       const container = document.getElementById("historyList");
       container.innerHTML = "";
 
-      const sessionsRef = collection(db, "sessions");
       const snapshot = await getDocs(sessionsRef);
-      const sessions = snapshot.docs.map(doc => doc.data());
+      const sessions = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 
       if (sessions.length === 0) {
         container.textContent = "データがありません。";
         return;
       }
 
-      sessions.sort((a, b) => (a.title > b.title ? -1 : 1));  // 日付の降順にソート
+      sessions.sort((a, b) => (a.title > b.title ? -1 : 1));
 
       sessions.forEach((session) => {
         const sessionDiv = document.createElement("div");
         sessionDiv.className = "session-container";
 
         const titleDiv = document.createElement("div");
-        titleDiv.className = "session-title";
-        titleDiv.innerHTML = `<h3>【${session.title}】</h3>`;
+        titleDiv.innerHTML = `
+          <h3>【${session.title}】</h3>
+          <button class="delete-button" onclick="deleteSession('${session.id}')">この回を削除</button>
+          <div style="margin-bottom:10px;">参加者：${session.players.join("・")}</div>
+        `;
         sessionDiv.appendChild(titleDiv);
 
-        const participants = document.createElement("div");
-        participants.className = "participants";
-        participants.textContent = `参加者：${session.players.join("・")}`;
-        sessionDiv.appendChild(participants);
-
-        const ul = document.createElement("ul");
-        ul.className = "history-list";
-
-        session.games.forEach(game => {
-          const li = document.createElement("li");
-          li.className = "history-item";
-          li.innerHTML = `${game.date}：${game.players.map(p => `${p.name}(${p.point})`).join("、")}`;
-          ul.appendChild(li);
+        session.games.forEach((game, gameIndex) => {
+          const item = document.createElement("div");
+          item.className = "history-item";
+          item.innerHTML = `
+            <strong>${game.date}</strong>：
+            ${game.players.map(p => `${p.name}(${p.point})`).join("、")}
+            <span class="action-buttons">
+              <button class="edit-button" onclick="editGame('${session.id}', ${gameIndex})">編集</button>
+              <button class="delete-button" onclick="deleteGame('${session.id}', ${gameIndex})">削除</button>
+            </span>
+          `;
+          sessionDiv.appendChild(item);
         });
 
-        sessionDiv.appendChild(ul);
         container.appendChild(sessionDiv);
       });
     }
 
+    async function deleteSession(sessionId) {
+      if (!confirm("この回をまるごと削除してもよろしいですか？")) return;
+      await deleteDoc(doc(db, "sessions", sessionId));
+      alert("削除しました。");
+      loadSessions();
+    }
+
+    async function deleteGame(sessionId, gameIndex) {
+      const sessionDoc = doc(db, "sessions", sessionId);
+      const snapshot = await getDocs(sessionsRef);
+      const sessionData = snapshot.docs.find(d => d.id === sessionId).data();
+      sessionData.games.splice(gameIndex, 1);
+      await updateDoc(sessionDoc, { games: sessionData.games });
+      alert("削除しました。");
+      loadSessions();
+    }
+
+    async function editGame(sessionId, gameIndex) {
+      const sessionDoc = doc(db, "sessions", sessionId);
+      const snapshot = await getDocs(sessionsRef);
+      const sessionData = snapshot.docs.find(d => d.id === sessionId).data();
+
+      const game = sessionData.games[gameIndex];
+      editState = { sessionId, gameIndex, original: game };
+
+      const form = document.getElementById("editForm");
+      form.innerHTML = "";
+
+      game.players.forEach(p => {
+        const input = document.createElement("input");
+        input.type = "number";
+        input.name = p.name;
+        input.value = p.point;
+        input.placeholder = p.name;
+        form.appendChild(input);
+      });
+
+      document.getElementById("editModal").style.display = "block";
+    }
+
+    async function saveEdit() {
+      const form = document.getElementById("editForm");
+      const inputs = form.querySelectorAll("input");
+      const newPlayers = Array.from(inputs).map(input => ({
+        name: input.name,
+        point: Number(input.value)
+      }));
+
+      const sessionDoc = doc(db, "sessions", editState.sessionId);
+      const snapshot = await getDocs(sessionsRef);
+      const sessionData = snapshot.docs.find(d => d.id === editState.sessionId).data();
+      sessionData.games[editState.gameIndex] = {
+        ...editState.original,
+        players: newPlayers
+      };
+
+      await updateDoc(sessionDoc, { games: sessionData.games });
+      closeModal();
+      alert("更新しました！");
+      loadSessions();
+    }
+
+    function closeModal() {
+      document.getElementById("editModal").style.display = "none";
+    }
+
+    window.editGame = editGame;
+    window.deleteGame = deleteGame;
+    window.deleteSession = deleteSession;
+    window.closeModal = closeModal;
+    window.saveEdit = saveEdit;
     window.onload = loadSessions;
   </script>
 </body>
