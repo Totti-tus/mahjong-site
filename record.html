@@ -216,7 +216,7 @@
     const rows = document.querySelectorAll(".player-row");
     const players = Array.from(rows).map(row => {
       const name = row.querySelector("select").value;
-      const point = Number(row.querySelector("input").value);
+      const point = Number(parseFloat(row.querySelector("input").value).toFixed(1));
       return { name, point };
     });
 
