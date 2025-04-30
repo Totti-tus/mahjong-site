@@ -4,379 +4,167 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>成績登録</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+      projectId: "mahjong-app-2e2e9",
+      storageBucket: "mahjong-app-2e2e9.firebasestorage.app",
+      messagingSenderId: "440425002404",
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
+      measurementId: "G-NP9EELBD7R"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.db = db;
+    window.addDoc = addDoc;
+    window.collection = collection;
+    window.onSnapshot = onSnapshot;
+  </script>
   <style>
-    :root {
-      --primary-color: #007bff;
-      --primary-hover: #0056b3;
-      --success-color: #28a745;
-      --success-hover: #218838;
-      --danger-color: #dc3545;
-      --danger-hover: #bd2130;
-      --background-color: #f5f5f5;
-      --card-background: #ffffff;
-      --text-color: #333333;
-      --border-radius: 12px;
-      --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--background-color);
-      color: var(--text-color);
-      line-height: 1.6;
-      padding: 20px;
-      margin: 0;
-      min-height: 100vh;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 0 15px;
-    }
-
-    h1, h2, h3 {
-      text-align: center;
-      color: var(--text-color);
-      margin: 1em 0;
-    }
-
-    .form-section {
-      background: var(--card-background);
-      padding: 25px;
-      margin-bottom: 20px;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
-    }
-
-    .input-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 500;
-      color: var(--text-color);
-    }
-
-    select, input[type="number"], input[type="date"] {
-      width: 100%;
-      padding: 12px;
-      font-size: 1em;
-      border-radius: var(--border-radius);
-      border: 2px solid #ddd;
-      transition: all 0.3s ease;
-      box-sizing: border-box;
-      margin-bottom: 15px;
-    }
-
-    select:focus, input:focus {
-      outline: none;
-      border-color: var(--primary-color);
-    }
-
+    body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
+    h1 { text-align: center; color: #333; }
     .main-button {
       display: block;
       width: 100%;
       max-width: 300px;
-      margin: 15px auto;
+      margin: 10px auto;
       padding: 15px;
-      font-size: 1.1em;
-      background-color: var(--primary-color);
+      font-size: 18px;
+      background-color: #007bff;
       color: white;
       border: none;
-      border-radius: var(--border-radius);
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.3s ease;
-      text-align: center;
     }
-
-    .main-button:hover {
-      background-color: var(--primary-hover);
-      transform: translateY(-2px);
-      box-shadow: var(--box-shadow);
-    }
-
-    .button-danger {
-      background-color: var(--danger-color);
-    }
-
-    .button-danger:hover {
-      background-color: var(--danger-hover);
-    }
-
-    .history-list {
-      margin-top: 30px;
-    }
-
-    .history-list li {
-      background: var(--card-background);
-      margin-bottom: 15px;
+    .main-button:hover { background-color: #0056b3; }
+    .form-section {
+      background: white;
       padding: 20px;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
-      position: relative;
-      transition: transform 0.2s ease;
+      margin: 20px auto;
+      max-width: 500px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-
-    .history-list li:hover {
-      transform: translateY(-2px);
+    label, select, input[type="number"], input[type="date"] {
+      display: block;
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
     }
-
-    .action-buttons {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      display: flex;
-      gap: 8px;
-    }
-
-    .action-buttons button {
-      padding: 8px 15px;
-      font-size: 0.9em;
-      border: none;
-      border-radius: var(--border-radius);
-      color: white;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .edit-button {
-      background-color: var(--success-color);
-    }
-
-    .edit-button:hover {
-      background-color: var(--success-hover);
-    }
-
-    .delete-button {
-      background-color: var(--danger-color);
-    }
-
-    .delete-button:hover {
-      background-color: var(--danger-hover);
-    }
-
-    @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-
-      .form-section {
-        padding: 15px;
-      }
-
-      .action-buttons {
-        position: static;
-        margin-top: 10px;
-        justify-content: flex-end;
-      }
-
-      .history-list li {
-        padding: 15px;
-      }
-
-      select, input[type="number"], input[type="date"] {
-        font-size: 16px; /* Prevents zoom on iOS */
-      }
+    .highlight { font-weight: bold; font-size: 20px; }
+    #realtimeDisplay {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 30px;
+      font-size: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>成績登録</h1>
-    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
-    <button class="main-button" onclick="location.href='history.html'">過去の対戦履歴を見る</button>
-    <button class="main-button button-danger" onclick="deleteCurrentSession()">この回を削除する</button>
 
-    <div class="form-section">
-      <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
-    </div>
+<h1>成績登録</h1>
+<button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
 
-    <div class="form-section">
-      <div class="input-group">
-        <label for="gameDate">日付：</label>
-        <input type="date" id="gameDate">
-      </div>
+<div class="form-section">
+  <label>日付：<input type="date" id="gameDate"></label>
 
-      <h3>参加者とポイント</h3>
-      <div class="input-group">
-        <select id="player1"></select>
-        <input type="number" id="point1" placeholder="ポイント" oninput="changeColor(this)">
-      </div>
-      <div class="input-group">
-        <select id="player2"></select>
-        <input type="number" id="point2" placeholder="ポイント" oninput="changeColor(this)">
-      </div>
-      <div class="input-group">
-        <select id="player3"></select>
-        <input type="number" id="point3" placeholder="ポイント" oninput="changeColor(this)">
-      </div>
-      <div class="input-group">
-        <select id="player4"></select>
-        <input type="number" id="point4" placeholder="ポイント" oninput="changeColor(this)">
-      </div>
+  <label>プレイヤー1：</label>
+  <select id="player1"></select>
+  <input type="number" id="point1" placeholder="ポイント">
 
-      <button class="main-button" onclick="saveRecord()">保存</button>
-    </div>
+  <label>プレイヤー2：</label>
+  <select id="player2"></select>
+  <input type="number" id="point2" placeholder="ポイント">
 
-    <ul id="historyList" class="history-list"></ul>
-  </div>
+  <label>プレイヤー3：</label>
+  <select id="player3"></select>
+  <input type="number" id="point3" placeholder="ポイント">
 
-<script>
-let sessions = [];
-let currentSessionId = null;
-let playerNames = [];
-let editingIndex = null; // 編集モード用
+  <label>プレイヤー4：</label>
+  <select id="player4"></select>
+  <input type="number" id="point4" placeholder="ポイント">
 
-function loadPlayers() {
-  playerNames = JSON.parse(localStorage.getItem('playerNames') || '[]');
-}
+  <button class="main-button" onclick="saveRecord()">保存</button>
+</div>
 
-function updatePlayerSelects() {
-  const ids = ['player1', 'player2', 'player3', 'player4'];
-  ids.forEach(id => {
-    const select = document.getElementById(id);
-    const selected = select.value;
-    select.innerHTML = '';
-    playerNames.forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      select.appendChild(opt);
-    });
-    if (playerNames.includes(selected)) {
-      select.value = selected;
-    }
-  });
-}
+<div id="realtimeDisplay"></div>
 
-function changeColor(input) {
-  const value = parseInt(input.value, 10);
-  input.style.color = isNaN(value) ? 'black' : (value > 0 ? 'blue' : (value < 0 ? 'red' : 'black'));
-}
+<script type="module">
+  import { collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-function startNewSession() {
-  const selectedDate = document.getElementById('gameDate').value;
-  const title = selectedDate || (new Date()).toISOString().split('T')[0];
-  const newSession = { title, players: [], games: [] };
-
-  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-  sessions.push(newSession);
-  currentSessionId = sessions.length - 1;
-  localStorage.setItem('sessions', JSON.stringify(sessions));
-  alert(`新しい回「${title}」を開始しました！`);
-  renderHistory();
-}
-
-function saveRecord() {
-  if (currentSessionId === null) {
-    alert("まず「新しい回を開始する」を押してください！");
-    return;
-  }
-
-  const date = document.getElementById('gameDate').value;
-  const players = [
-    { name: player1.value, point: Number(point1.value) },
-    { name: player2.value, point: Number(point2.value) },
-    { name: player3.value, point: Number(point3.value) },
-    { name: player4.value, point: Number(point4.value) }
-  ];
-
-  const sum = players.reduce((acc, p) => acc + p.point, 0);
-  if (Math.abs(sum) > 0.001) {
-    alert("ポイント合計が±0ではありません！");
-    return;
-  }
-
-  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-
-  if (editingIndex !== null) {
-    sessions[currentSessionId].games[editingIndex] = { date, players };
-    editingIndex = null;
-  } else {
-    sessions[currentSessionId].games.push({ date, players });
-    if (sessions[currentSessionId].players.length === 0) {
-      sessions[currentSessionId].players = players.map(p => p.name);
-    }
-  }
-
-  localStorage.setItem('sessions', JSON.stringify(sessions));
-  clearForm();
-  renderHistory();
-}
-
-function clearForm() {
-  [point1, point2, point3, point4].forEach(p => {
-    p.value = '';
-    p.style.color = 'black';
-  });
-  editingIndex = null;
-}
-
-function renderHistory() {
-  const list = document.getElementById('historyList');
-  list.innerHTML = '';
-  if (currentSessionId === null) return;
-  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-  const games = sessions[currentSessionId]?.games || [];
-
-  games.forEach((g, idx) => {
-    const li = document.createElement('li');
-    li.innerHTML = `
-      ${g.date}：${g.players.map(p => `${p.name}(${p.point})`).join('、')}
-      <div class="action-buttons">
-        <button class="edit-button" onclick="editRecord(${idx})">編集</button>
-        <button class="delete-button" onclick="deleteRecord(${idx})">削除</button>
-      </div>
-    `;
-    list.appendChild(li);
-  });
-}
-
-function editRecord(index) {
-  const g = sessions[currentSessionId].games[index];
-  document.getElementById('gameDate').value = g.date;
-  [player1, player2, player3, player4].forEach((sel, i) => sel.value = g.players[i].name);
-  [point1, point2, point3, point4].forEach((input, i) => {
-    input.value = g.players[i].point;
-    changeColor(input);
-  });
-  editingIndex = index;
-}
-
-function deleteRecord(index) {
-  if (!confirm('この半荘を削除してもよろしいですか？')) return;
-  sessions[currentSessionId].games.splice(index, 1);
-  localStorage.setItem('sessions', JSON.stringify(sessions));
-  renderHistory();
-}
-
-function deleteCurrentSession() {
-  if (!confirm('この回をまるごと削除してもよろしいですか？')) return;
-  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-  sessions.splice(currentSessionId, 1);
-  localStorage.setItem('sessions', JSON.stringify(sessions));
-  currentSessionId = sessions.length - 1;
-  alert('回を削除しました！');
-  renderHistory();
-}
-
-window.onload = function() {
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
-  document.getElementById('gameDate').value = `${yyyy}-${mm}-${dd}`;
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('gameDate').value = `${yyyy}-${mm}-${dd}`;
+    loadPlayers();
+    setupRealtimeListener();
+  });
 
-  loadPlayers();
-  updatePlayerSelects();
+  function loadPlayers() {
+    const names = JSON.parse(localStorage.getItem('playerNames') || '[]');
+    ['player1','player2','player3','player4'].forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = '';
+      names.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+    });
+  }
 
-  sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-  currentSessionId = sessions.length - 1;
-  renderHistory();
-}
+  function saveRecord() {
+    const date = document.getElementById('gameDate').value;
+    const players = [
+      { name: player1.value, point: Number(point1.value) },
+      { name: player2.value, point: Number(point2.value) },
+      { name: player3.value, point: Number(point3.value) },
+      { name: player4.value, point: Number(point4.value) }
+    ];
+
+    const sum = players.reduce((acc, p) => acc + p.point, 0);
+    if (Math.abs(sum) > 0.001) {
+      alert("ポイント合計が±0ではありません！");
+      return;
+    }
+
+    const session = {
+      title: date,
+      players: players.map(p => p.name),
+      games: [ { date, players } ]
+    };
+
+    addDoc(collection(window.db, "sessions"), session)
+      .then(() => alert("保存しました！"))
+      .catch(error => alert("保存に失敗しました: " + error));
+  }
+
+  function setupRealtimeListener() {
+    const display = document.getElementById('realtimeDisplay');
+    onSnapshot(collection(window.db, "sessions"), (snapshot) => {
+      let html = '<h3>📡 リアルタイムで保存されたセッション一覧</h3>';
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        html += `<div><strong>${data.title}</strong>: ${data.games[0].players.map(p => `${p.name}(${p.point})`).join('、')}</div>`;
+      });
+      display.innerHTML = html;
+    });
+  }
 </script>
 
 </body>

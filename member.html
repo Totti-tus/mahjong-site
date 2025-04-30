@@ -1,234 +1,106 @@
-<!-- member.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>メンバー登録</title>
+  <title>メンバー管理</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+      projectId: "mahjong-app-2e2e9",
+      storageBucket: "mahjong-app-2e2e9.firebasestorage.app",
+      messagingSenderId: "440425002404",
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
+      measurementId: "G-NP9EELBD7R"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const playersRef = collection(db, "players");
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const nameInput = document.getElementById("playerName");
+      const addButton = document.getElementById("addButton");
+      const list = document.getElementById("memberList");
+
+      addButton.addEventListener("click", async () => {
+        const name = nameInput.value.trim();
+        if (!name) return alert("名前を入力してください");
+        await addDoc(playersRef, { name });
+        nameInput.value = "";
+      });
+
+      onSnapshot(playersRef, snapshot => {
+        list.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const li = document.createElement("li");
+
+          const span = document.createElement("span");
+          span.textContent = data.name;
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = data.name;
+          input.style.display = "none";
+
+          const edit = document.createElement("button");
+          edit.textContent = "編集";
+          edit.onclick = () => {
+            span.style.display = "none";
+            input.style.display = "inline-block";
+            input.focus();
+            edit.style.display = "none";
+            save.style.display = "inline-block";
+          };
+
+          const save = document.createElement("button");
+          save.textContent = "保存";
+          save.style.display = "none";
+          save.onclick = async () => {
+            const newName = input.value.trim();
+            if (!newName) return alert("名前を入力してください");
+            await updateDoc(doc(playersRef, docSnap.id), { name: newName });
+          };
+
+          const del = document.createElement("button");
+          del.textContent = "🗑️";
+          del.onclick = async () => {
+            if (confirm("削除しますか？")) {
+              await deleteDoc(doc(playersRef, docSnap.id));
+            }
+          };
+
+          li.appendChild(span);
+          li.appendChild(input);
+          li.appendChild(edit);
+          li.appendChild(save);
+          li.appendChild(del);
+          list.appendChild(li);
+        });
+      });
+    });
+  </script>
   <style>
-    :root {
-      --primary-color: #007bff;
-      --primary-hover: #0056b3;
-      --background-color: #f5f5f5;
-      --card-background: #ffffff;
-      --text-color: #333333;
-      --border-radius: 12px;
-      --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      --danger-color: #dc3545;
-      --danger-hover: #bd2130;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--background-color);
-      color: var(--text-color);
-      line-height: 1.6;
-      padding: 20px;
-      margin: 0;
-      min-height: 100vh;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 0 15px;
-    }
-
-    h1 {
-      text-align: center;
-      color: var(--text-color);
-      font-size: 2em;
-      margin: 1em 0;
-    }
-
-    .main-button {
-      display: block;
-      width: 100%;
-      max-width: 300px;
-      margin: 15px auto;
-      padding: 15px;
-      font-size: 1.1em;
-      background-color: var(--primary-color);
-      color: white;
-      border: none;
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-align: center;
-      text-decoration: none;
-    }
-
-    .main-button:hover {
-      background-color: var(--primary-hover);
-      transform: translateY(-2px);
-      box-shadow: var(--box-shadow);
-    }
-
-    .input-container {
-      margin: 20px auto;
-      max-width: 500px;
-      background: var(--card-background);
-      padding: 20px;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 12px;
-      font-size: 1em;
-      border-radius: var(--border-radius);
-      border: 2px solid #ddd;
-      transition: border-color 0.3s ease;
-      box-sizing: border-box;
-      margin-bottom: 15px;
-    }
-
-    input[type="text"]:focus {
-      outline: none;
-      border-color: var(--primary-color);
-    }
-
-    ul {
-      list-style-type: none;
-      padding: 0;
-      margin: 20px auto;
-      max-width: 500px;
-    }
-
-    li {
-      background: var(--card-background);
-      margin: 10px 0;
-      padding: 15px;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: transform 0.2s ease;
-    }
-
-    li:hover {
-      transform: translateY(-2px);
-    }
-
-    span.name {
-      cursor: pointer;
-      color: var(--primary-color);
-      font-weight: 500;
-    }
-
-    span.name:hover {
-      text-decoration: underline;
-    }
-
-    @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-
-      .input-container {
-        padding: 15px;
-      }
-
-      li {
-        padding: 12px;
-        font-size: 0.9em;
-      }
-
-      .main-button {
-        font-size: 1em;
-        padding: 12px;
-      }
-    }
+    body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+    h1 { text-align: center; }
+    .form { text-align: center; margin: 20px 0; }
+    input[type="text"] { padding: 10px; font-size: 16px; margin-bottom: 5px; }
+    button { padding: 6px 10px; font-size: 14px; margin-left: 5px; cursor: pointer; }
+    ul { list-style: none; padding: 0; max-width: 400px; margin: 0 auto; }
+    li { background: white; padding: 10px; margin-bottom: 5px; border-radius: 5px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>メンバー登録</h1>
-    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
-
-    <div class="input-container">
-      <input type="text" id="newPlayerName" placeholder="プレイヤー名を入力">
-      <button class="main-button" onclick="addPlayer()">追加</button>
-    </div>
-
-    <ul id="playerList"></ul>
+  <h1>メンバー登録</h1>
+  <div class="form">
+    <input type="text" id="playerName" placeholder="名前を入力">
+    <button id="addButton">追加</button>
   </div>
-
-  <script>
-    let playerNames = [];
-
-    function loadPlayers() {
-      playerNames = JSON.parse(localStorage.getItem('playerNames') || '[]');
-    }
-
-    function savePlayers() {
-      localStorage.setItem('playerNames', JSON.stringify(playerNames));
-    }
-
-    function renderPlayerList() {
-      const list = document.getElementById('playerList');
-      list.innerHTML = '';
-
-      playerNames.forEach(name => {
-        const li = document.createElement('li');
-        const span = document.createElement('span');
-        span.className = 'name';
-        span.textContent = name;
-        span.onclick = function () {
-          const newName = prompt("新しい名前を入力してください", name);
-          if (newName && newName.trim() && !playerNames.includes(newName.trim())) {
-            renamePlayer(name, newName.trim());
-          } else if (playerNames.includes(newName.trim())) {
-            alert("同じ名前がすでに存在します！");
-          }
-        };
-        li.appendChild(span);
-        list.appendChild(li);
-      });
-    }
-
-    function addPlayer() {
-      const name = document.getElementById('newPlayerName').value.trim();
-      if (!name) {
-        alert("名前を入力してください");
-        return;
-      }
-      if (playerNames.includes(name)) {
-        alert("すでに登録されています");
-        return;
-      }
-      playerNames.push(name);
-      savePlayers();
-      renderPlayerList();
-      document.getElementById('newPlayerName').value = '';
-    }
-
-    function renamePlayer(oldName, newName) {
-      const index = playerNames.indexOf(oldName);
-      if (index !== -1) {
-        playerNames[index] = newName;
-        savePlayers();
-        renderPlayerList();
-      }
-
-      const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
-      sessions.forEach(session => {
-        session.players = session.players.map(n => n === oldName ? newName : n);
-        session.games.forEach(game => {
-          game.players.forEach(p => {
-            if (p.name === oldName) p.name = newName;
-          });
-        });
-      });
-      localStorage.setItem('sessions', JSON.stringify(sessions));
-    }
-
-    window.onload = function () {
-      loadPlayers();
-      renderPlayerList();
-    }
-  </script>
+  <ul id="memberList"></ul>
 </body>
 </html>
