@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>過去の対戦履歴</title>
   <style>
     :root {
@@ -33,13 +33,9 @@
       padding: 0 15px;
     }
 
-    h1, h2, h3 {
+    h1, h3 {
       text-align: center;
       color: var(--text-color);
-    }
-
-    h3 {
-      margin-bottom: 0.5em;
     }
 
     .main-button {
@@ -90,23 +86,6 @@
       border-radius: var(--border-radius);
     }
 
-    .session-delete-button {
-      background-color: var(--danger-color);
-      padding: 8px 15px;
-      color: white;
-      border: none;
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 0.9em;
-    }
-
-    .session-delete-button:hover {
-      background-color: var(--danger-hover);
-      transform: translateY(-1px);
-      box-shadow: var(--box-shadow);
-    }
-
     .history-list {
       list-style: none;
       padding: 0;
@@ -127,40 +106,7 @@
       box-shadow: var(--box-shadow);
     }
 
-    .action-buttons {
-      position: absolute;
-      top: 50%;
-      right: 15px;
-      transform: translateY(-50%);
-      display: flex;
-      gap: 8px;
-    }
-
-    .delete-button {
-      background-color: var(--danger-color);
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .delete-button:hover {
-      background-color: var(--danger-hover);
-    }
-
-    hr {
-      border: none;
-      border-top: 1px solid #eee;
-      margin: 20px 0;
-    }
-
     @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-
       .session-container {
         padding: 15px;
       }
@@ -171,21 +117,9 @@
         text-align: center;
       }
 
-      .action-buttons {
-        position: static;
-        justify-content: flex-end;
-        transform: none;
-        margin-top: 10px;
-      }
-
       .history-item {
         padding: 12px;
         font-size: 0.9em;
-      }
-
-      .session-delete-button {
-        width: 100%;
-        margin-top: 10px;
       }
     }
   </style>
@@ -194,73 +128,71 @@
   <div class="container">
     <h1>過去の対戦履歴</h1>
     <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
-    <div id="historyList"></div>
+    <div id="historyList">読み込み中...</div>
   </div>
 
-  <script>
-    let sessions = [];
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    function renderAllSessions() {
-      const container = document.getElementById('historyList');
-      container.innerHTML = '';
-      sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+      projectId: "mahjong-app-2e2e9",
+      storageBucket: "mahjong-app-2e2e9.appspot.com",
+      messagingSenderId: "440425002404",
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
+      measurementId: "G-NP9EELBD7R"
+    };
 
-      sessions.forEach((session, sessionIndex) => {
-        const sessionDiv = document.createElement('div');
-        sessionDiv.className = 'session-container';
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'session-title';
-        titleDiv.innerHTML = `
-          <h3>【${session.title}】</h3>
-          <button class="session-delete-button" onclick="deleteSession(${sessionIndex})">
-            この回を削除する
-          </button>
-        `;
+    async function loadSessions() {
+      const container = document.getElementById("historyList");
+      container.innerHTML = "";
+
+      const sessionsRef = collection(db, "sessions");
+      const snapshot = await getDocs(sessionsRef);
+      const sessions = snapshot.docs.map(doc => doc.data());
+
+      if (sessions.length === 0) {
+        container.textContent = "データがありません。";
+        return;
+      }
+
+      sessions.sort((a, b) => (a.title > b.title ? -1 : 1));  // 日付の降順にソート
+
+      sessions.forEach((session) => {
+        const sessionDiv = document.createElement("div");
+        sessionDiv.className = "session-container";
+
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "session-title";
+        titleDiv.innerHTML = `<h3>【${session.title}】</h3>`;
         sessionDiv.appendChild(titleDiv);
 
-        const participants = document.createElement('div');
-        participants.className = 'participants';
-        participants.textContent = `参加者：${session.players.join('・')}`;
+        const participants = document.createElement("div");
+        participants.className = "participants";
+        participants.textContent = `参加者：${session.players.join("・")}`;
         sessionDiv.appendChild(participants);
 
-        const ul = document.createElement('ul');
-        ul.className = 'history-list';
-        
-        session.games.forEach((game, gameIndex) => {
-          const li = document.createElement('li');
-          li.className = 'history-item';
-          li.innerHTML = `
-            ${game.date}：${game.players.map(p => `${p.name}(${p.point})`).join('、')}
-            <div class="action-buttons">
-              <button class="delete-button" onclick="deleteGame(${sessionIndex}, ${gameIndex})">削除</button>
-            </div>
-          `;
+        const ul = document.createElement("ul");
+        ul.className = "history-list";
+
+        session.games.forEach(game => {
+          const li = document.createElement("li");
+          li.className = "history-item";
+          li.innerHTML = `${game.date}：${game.players.map(p => `${p.name}(${p.point})`).join("、")}`;
           ul.appendChild(li);
         });
-        
+
         sessionDiv.appendChild(ul);
         container.appendChild(sessionDiv);
       });
     }
 
-    function deleteSession(index) {
-      if (!confirm('この回をまるごと削除してもよろしいですか？')) return;
-      sessions.splice(index, 1);
-      localStorage.setItem('sessions', JSON.stringify(sessions));
-      renderAllSessions();
-    }
-
-    function deleteGame(sessionIndex, gameIndex) {
-      if (!confirm('この半荘を削除してもよろしいですか？')) return;
-      sessions[sessionIndex].games.splice(gameIndex, 1);
-      localStorage.setItem('sessions', JSON.stringify(sessions));
-      renderAllSessions();
-    }
-
-    window.onload = function() {
-      renderAllSessions();
-    }
+    window.onload = loadSessions;
   </script>
 </body>
 </html>
