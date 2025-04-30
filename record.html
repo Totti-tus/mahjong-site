@@ -4,6 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>成績登録</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
+    h1 { text-align: center; }
+    .form-section { background: white; padding: 20px; max-width: 500px; margin: 20px auto; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    label, select, input[type="number"], input[type="date"] { display: block; width: 100%; margin-bottom: 15px; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
+    .main-button { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 15px; font-size: 18px; background-color: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; }
+    .main-button:hover { background-color: #0056b3; }
+    .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .player-row select, .player-row input { flex: 1; }
+    .top-nav { text-align: center; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <h1>成績登録</h1>
+  <div class="top-nav">
+    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+    <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
+  </div>
+  <div class="form-section">
+    <label>日付：<input type="date" id="gameDate"></label>
+    <div id="playersContainer"></div>
+    <button class="main-button" onclick="saveRecord()">保存</button>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFirestore, collection, addDoc, updateDoc, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -12,7 +36,7 @@
       apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
       authDomain: "mahjong-app-2e2e9.firebaseapp.com",
       projectId: "mahjong-app-2e2e9",
-      storageBucket: "mahjong-app-2e2e9.firebasestorage.app",
+      storageBucket: "mahjong-app-2e2e9.appspot.com",  // ← 修正点: storageBucket のドメイン誤り修正
       messagingSenderId: "440425002404",
       appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
       measurementId: "G-NP9EELBD7R"
@@ -58,7 +82,15 @@
           title: date,
           players: [],
           games: []
-        }
+        };
+        const docRef = await addDoc(sessionsRef, session);
+        currentSessionId = docRef.id;
+        alert("新しい回を開始しました！");
+      } catch (e) {
+        console.error(e);
+        alert("新しい回の開始に失敗しました：" + e.message);
+      }
+    }
 
     async function saveRecord() {
       try {
@@ -94,34 +126,16 @@
       }
     }
 
+    // DOMロード後に初期化
     document.addEventListener('DOMContentLoaded', () => {
       const today = new Date();
       document.getElementById('gameDate').value = today.toISOString().split('T')[0];
       loadPlayers();
     });
+
+    // ボタンから呼び出せるようにグローバル登録
+    window.startNewSession = startNewSession;
+    window.saveRecord = saveRecord;
   </script>
-  <style>
-    body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
-    h1 { text-align: center; }
-    .form-section { background: white; padding: 20px; max-width: 500px; margin: 20px auto; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    label, select, input[type="number"], input[type="date"] { display: block; width: 100%; margin-bottom: 15px; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
-    .main-button { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 15px; font-size: 18px; background-color: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; }
-    .main-button:hover { background-color: #0056b3; }
-    .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
-    .player-row select, .player-row input { flex: 1; }
-    .top-nav { text-align: center; margin-bottom: 20px; }
-  </style>
-</head>
-<body>
-  <h1>成績登録</h1>
-  <div class="top-nav">
-    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
-    <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
-  </div>
-  <div class="form-section">
-    <label>日付：<input type="date" id="gameDate"></label>
-    <div id="playersContainer"></div>
-    <button class="main-button" onclick="saveRecord()">保存</button>
-  </div>
 </body>
 </html>
