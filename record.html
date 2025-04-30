@@ -343,6 +343,10 @@
     await loadPlayers();
     await restoreSessionIfExists();
   });
+  // ボタンが呼び出せるようにグローバル登録
+  window.startNewSession = startNewSession;
+  window.saveRecord = saveRecord;
+
 </script>
 </body>
 </html>
