@@ -6,7 +6,7 @@
   <title>成績登録</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, updateDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
@@ -21,6 +21,8 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const playersRef = collection(db, "players");
+    const sessionsRef = collection(db, "sessions");
+    let currentSessionId = null;
 
     async function loadPlayers() {
       const snapshot = await getDocs(playersRef);
@@ -49,7 +51,23 @@
       }
     }
 
+    async function startNewSession() {
+      const date = document.getElementById('gameDate').value;
+      const session = {
+        title: date,
+        players: [],
+        games: []
+      };
+      const docRef = await addDoc(sessionsRef, session);
+      currentSessionId = docRef.id;
+      alert("新しい回を開始しました！");
+    }
+
     async function saveRecord() {
+      if (!currentSessionId) {
+        alert("先に『新しい回を開始する』を押してください。");
+        return;
+      }
       const date = document.getElementById('gameDate').value;
       const rows = document.querySelectorAll(".player-row");
       const players = Array.from(rows).map(row => {
@@ -62,13 +80,16 @@
         alert("ポイント合計が±0ではありません！");
         return;
       }
-      const session = {
-        title: date,
-        players: players.map(p => p.name),
-        games: [ { date, players } ]
-      };
-      await addDoc(collection(db, "sessions"), session);
-      alert("保存しました！");
+      const sessionDoc = doc(db, "sessions", currentSessionId);
+      const sessionSnap = await getDocs(sessionsRef);
+      const sessionData = (await sessionSnap.docs.find(d => d.id === currentSessionId)).data();
+      const updatedGames = sessionData.games.concat([{ date, players }]);
+      const updatedPlayers = Array.from(new Set(sessionData.players.concat(players.map(p => p.name))));
+      await updateDoc(sessionDoc, {
+        games: updatedGames,
+        players: updatedPlayers
+      });
+      alert("対局を保存しました！");
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -86,11 +107,15 @@
     .main-button:hover { background-color: #0056b3; }
     .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
     .player-row select, .player-row input { flex: 1; }
+    .top-nav { text-align: center; margin-bottom: 20px; }
   </style>
 </head>
 <body>
   <h1>成績登録</h1>
-  <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+  <div class="top-nav">
+    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+    <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
+  </div>
   <div class="form-section">
     <label>日付：<input type="date" id="gameDate"></label>
     <div id="playersContainer"></div>
