@@ -85,6 +85,13 @@
       margin-top: 30px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
+    .opponent-section {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
     canvas {
       margin-top: 20px;
       max-width: 100%;
@@ -120,7 +127,6 @@
     </table>
   </div>
   <div id="playerDetail"></div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -172,7 +178,8 @@ function calculateStats(sessions) {
         if (!playerData[p.name]) {
           playerData[p.name] = {
             name: p.name, games: 0, tops: 0, seconds: 0, thirds: 0, fourths: 0,
-            totalRank: 0, totalPoint: 0, pointHistory: [], rankHistory: []
+            totalRank: 0, totalPoint: 0, pointHistory: [], rankHistory: [],
+            vs: {}  // ← 対戦相手データ用
           };
         }
         const data = playerData[p.name];
@@ -185,6 +192,17 @@ function calculateStats(sessions) {
         if (i === 1) data.seconds++;
         if (i === 2) data.thirds++;
         if (i === 3) data.fourths++;
+
+        // 相手別データを記録
+        game.players.forEach(op => {
+          if (op.name === p.name) return;
+          if (!data.vs[op.name]) {
+            data.vs[op.name] = { games: 0, pointDiff: 0, wins: 0 };
+          }
+          data.vs[op.name].games++;
+          data.vs[op.name].pointDiff += p.point - op.point;
+          if (p.point > op.point) data.vs[op.name].wins++;
+        });
       });
     });
   });
@@ -245,30 +263,74 @@ function applyHighlighting() {
     });
   }
 }
-
 window.viewPlayerDetail = function(name) {
   const p = window.playerData[name];
   if (!p) return;
+
   const detailDiv = document.getElementById('playerDetail');
+  const avgPoint = (p.totalPoint / p.games).toFixed(1);
+  const avgRank = (p.totalRank / p.games).toFixed(2);
+  const topRate = ((p.tops / p.games) * 100).toFixed(1);
+  const avoidLastRate = (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1);
+
+  const opponents = Object.keys(p.vs).sort();
+
   detailDiv.innerHTML = `
     <div class="player-detail">
       <h2>${p.name} の成績詳細</h2>
-      <p>対局数: ${p.games}回 / 合計ポイント: ${p.totalPoint >= 0 ? '+' : ''}${p.totalPoint.toFixed(1)}pt</p>
+      <p>
+        🀄 対局数：${p.games} 回<br>
+        🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>
+        📈 平均ポイント：${avgPoint} pt<br>
+        🧮 平均着順：${avgRank} 位<br>
+        👑 トップ率：${topRate}%<br>
+        🚫 ラス回避率：${avoidLastRate}%
+      </p>
+
       <canvas id="pointChart"></canvas>
-      <canvas id="rankChart"></canvas>
+
+      <div class="opponent-section">
+        <label>対戦相手を選択：
+          <select id="opponentSelect">
+            <option value="">--選択してください--</option>
+            ${opponents.map(op => `<option value="${op}">${op}</option>`).join('')}
+          </select>
+        </label>
+        <div id="opponentStats"></div>
+      </div>
     </div>
   `;
-  drawGraphs(p);
+
+  drawPointGraph(p);
+
+  document.getElementById("opponentSelect").addEventListener("change", e => {
+    const opName = e.target.value;
+    const vs = p.vs[opName];
+    const statsDiv = document.getElementById("opponentStats");
+
+    if (!opName || !vs) {
+      statsDiv.innerHTML = "";
+      return;
+    }
+
+    const avgDiff = (vs.pointDiff / vs.games).toFixed(1);
+    const winRate = ((vs.wins / vs.games) * 100).toFixed(1);
+
+    statsDiv.innerHTML = `
+      <p>
+        📊 ${p.name} vs ${opName}<br>
+        🔁 同卓回数：${vs.games} 回<br>
+        🥇 勝利回数：${vs.wins} 回 (${winRate}%)<br>
+        ⚖️ 平均点差：${avgDiff} pt
+      </p>
+    `;
+  });
 };
 
-function drawGraphs(p) {
+function drawPointGraph(p) {
   const pointData = p.pointHistory.map(v => Number(v.toFixed(1)));
-  const avgRanks = p.rankHistory.map((_, i, arr) =>
-    (arr.slice(0, i + 1).reduce((a, b) => a + b, 0) / (i + 1)).toFixed(2)
-  );
-
-  const ctx1 = document.getElementById('pointChart').getContext('2d');
-  new Chart(ctx1, {
+  const ctx = document.getElementById('pointChart').getContext('2d');
+  new Chart(ctx, {
     type: 'line',
     data: {
       labels: pointData.map((_, i) => i + 1),
@@ -284,27 +346,6 @@ function drawGraphs(p) {
       scales: {
         x: { title: { display: true, text: '対局数' } },
         y: { title: { display: true, text: '累積ポイント' } }
-      }
-    }
-  });
-
-  const ctx2 = document.getElementById('rankChart').getContext('2d');
-  new Chart(ctx2, {
-    type: 'line',
-    data: {
-      labels: avgRanks.map((_, i) => i + 1),
-      datasets: [{
-        label: '平均着順推移',
-        data: avgRanks,
-        borderColor: 'green',
-        fill: false
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: '対局数' } },
-        y: { reverse: true, min: 1, max: 4, title: { display: true, text: '平均順位' } }
       }
     }
   });
