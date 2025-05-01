@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>対戦履歴</title>
   <style>
     body {
@@ -118,8 +118,9 @@
     <label>開始日: <input type="date" id="startDate"></label>
     <label>終了日: <input type="date" id="endDate"></label>
   </div>
+
   <div id="historyContainer"></div>
-  <!-- 半荘削除モーダル -->
+  <!-- 各種モーダル -->
   <div id="gameDeleteModal" class="modal">
     <div class="modal-content">
       <h3>この半荘を削除してもよろしいですか？</h3>
@@ -128,7 +129,6 @@
     </div>
   </div>
 
-  <!-- セッション削除モーダル（ステップ1） -->
   <div id="sessionDeleteModal1" class="modal">
     <div class="modal-content">
       <h3>この回を削除しますか？</h3>
@@ -137,7 +137,6 @@
     </div>
   </div>
 
-  <!-- セッション削除モーダル（ステップ2） -->
   <div id="sessionDeleteModal2" class="modal">
     <div class="modal-content">
       <h3>本当に削除してもよろしいですか？</h3>
@@ -147,7 +146,6 @@
     </div>
   </div>
 
-  <!-- 半荘追加モーダル -->
   <div id="addModal" class="modal">
     <div class="modal-content">
       <h3>半荘を追加</h3>
@@ -157,7 +155,193 @@
     </div>
   </div>
 
-  <!-- JSファイル読込（別ファイルで記述） -->
-  <script type="module" src="./history_logic.js"></script>
+  <!-- JavaScript -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, getDoc
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+      projectId: "mahjong-app-2e2e9",
+      storageBucket: "mahjong-app-2e2e9.appspot.com",
+      messagingSenderId: "440425002404",
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let allSessions = [];
+    let sessionToDelete = null;
+    let sessionToAdd = null;
+    let gameToDelete = { sessionId: null, index: null };
+
+    document.getElementById("startDate").addEventListener("change", displaySessions);
+    document.getElementById("endDate").addEventListener("change", displaySessions);
+
+    async function loadSessions() {
+      const snapshot = await getDocs(collection(db, "sessions"));
+      allSessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      displaySessions();
+    }
+
+    function displaySessions() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+      const container = document.getElementById("historyContainer");
+      container.innerHTML = "";
+
+      const filtered = allSessions.filter(s => {
+        const date = s.title;
+        return (!start || date >= start) && (!end || date <= end);
+      });
+
+      filtered.forEach(session => {
+        const div = document.createElement("div");
+        div.className = "session";
+        const sessionId = session.id;
+
+        const gamesHTML = session.games.map((g, i) => `
+          <div class="game">
+            <div class="text">${g.date}：${g.players.map(p => `${p.name}(${p.point})`).join("、")}</div>
+            <button class="delete-game-btn" onclick="confirmGameDelete('${sessionId}', ${i})">🗑</button>
+          </div>
+        `).join("");
+
+        div.innerHTML = `
+          <div class="session-header">
+            <h3>${session.title}</h3>
+            <button class="edit-button" onclick="toggleAction('${sessionId}')">編集</button>
+          </div>
+          ${gamesHTML}
+          <div class="action-panel" id="action-${sessionId}">
+            <button onclick="openAddModal('${sessionId}')">半荘を追加</button>
+            <button class="delete-button" onclick="beginDeleteSession('${sessionId}')">回を削除</button>
+          </div>
+        `;
+
+        container.appendChild(div);
+      });
+    }
+
+    window.toggleAction = function(sessionId) {
+      const panel = document.getElementById(`action-${sessionId}`);
+      const show = panel.style.display !== "block";
+      panel.style.display = show ? "block" : "none";
+      if (show) {
+        panel.scrollIntoView({ behavior: "smooth", block: "center" });
+        panel.style.boxShadow = "0 0 5px 2px rgba(0, 123, 255, 0.4)";
+        setTimeout(() => panel.style.boxShadow = "none", 1000);
+      }
+    };
+    window.beginDeleteSession = function(id) {
+      sessionToDelete = id;
+      document.getElementById("sessionDeleteModal1").style.display = "block";
+    };
+
+    document.getElementById("nextDeleteStep").onclick = () => {
+      document.getElementById("sessionDeleteModal1").style.display = "none";
+      document.getElementById("sessionDeleteModal2").style.display = "block";
+    };
+
+    document.getElementById("confirmSessionDeleteBtn").onclick = async () => {
+      if (!sessionToDelete) return;
+      await deleteDoc(doc(db, "sessions", sessionToDelete));
+      closeModal();
+      await loadSessions();
+    };
+
+    window.confirmGameDelete = function(sessionId, index) {
+      gameToDelete = { sessionId, index };
+      document.getElementById("gameDeleteModal").style.display = "block";
+    };
+
+    document.getElementById("confirmGameDeleteBtn").onclick = async () => {
+      const { sessionId, index } = gameToDelete;
+      const ref = doc(db, "sessions", sessionId);
+      const snap = await getDoc(ref);
+      const data = snap.data();
+      data.games.splice(index, 1);
+      await updateDoc(ref, { games: data.games });
+      closeModal();
+      await loadSessions();
+    };
+
+    window.openAddModal = async function(sessionId) {
+      sessionToAdd = sessionId;
+      const playerSnap = await getDocs(collection(db, "players"));
+      const names = playerSnap.docs.map(d => d.data().name);
+
+      const container = document.getElementById("addFormContainer");
+      container.innerHTML = "";
+      for (let i = 0; i < 4; i++) {
+        const select = document.createElement("select");
+        names.forEach(name => {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          select.appendChild(opt);
+        });
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.placeholder = "ポイント";
+
+        container.appendChild(select);
+        container.appendChild(input);
+      }
+
+      document.getElementById("addModal").style.display = "block";
+    };
+
+    document.getElementById("saveGameBtn").onclick = async () => {
+      if (!sessionToAdd) return;
+      const selects = document.querySelectorAll("#addFormContainer select");
+      const inputs = document.querySelectorAll("#addFormContainer input");
+      const players = [];
+
+      for (let i = 0; i < 4; i++) {
+        const name = selects[i].value;
+        const point = parseFloat(inputs[i].value);
+        if (!name || isNaN(point)) {
+          alert("全員分の名前と点数を入力してください");
+          return;
+        }
+        players.push({ name, point });
+      }
+
+      const sum = players.reduce((a, b) => a + b.point, 0);
+      if (Math.abs(sum) > 0.001) {
+        alert("ポイント合計が±0ではありません！");
+        return;
+      }
+
+      const date = new Date().toISOString().split("T")[0];
+      const sessionDoc = doc(db, "sessions", sessionToAdd);
+      const snap = await getDoc(sessionDoc);
+      const sessionData = snap.data();
+      sessionData.games.push({ date, players });
+
+      await updateDoc(sessionDoc, {
+        games: sessionData.games,
+        players: Array.from(new Set(sessionData.players.concat(players.map(p => p.name))))
+      });
+
+      closeModal();
+      await loadSessions();
+    };
+
+    window.closeModal = function() {
+      document.querySelectorAll(".modal").forEach(m => m.style.display = "none");
+      sessionToDelete = null;
+      sessionToAdd = null;
+      gameToDelete = { sessionId: null, index: null };
+    };
+
+    loadSessions();
+  </script>
 </body>
 </html>
