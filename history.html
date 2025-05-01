@@ -12,12 +12,21 @@
     }
     h1 {
       text-align: center;
+      margin-bottom: 10px;
+    }
+    .filter-box {
+      text-align: center;
       margin-bottom: 20px;
     }
+    .filter-box input {
+      padding: 8px;
+      margin: 5px;
+      font-size: 14px;
+    }
     .session {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       padding: 15px;
       margin-bottom: 20px;
     }
@@ -29,10 +38,7 @@
     }
     .session-header h3 {
       margin: 0;
-    }
-    .game {
-      margin: 5px 0;
-      padding-left: 10px;
+      font-size: 1em;
     }
     .edit-button,
     .action-panel button {
@@ -50,13 +56,34 @@
     }
     .action-panel {
       display: none;
-      margin-top: 10px;
+      margin: 10px 0;
     }
     .delete-button {
       background: #dc3545;
     }
+    .game {
+      background: #f8f8f8;
+      border-radius: 5px;
+      padding: 8px;
+      margin: 5px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    .game .text {
+      flex-grow: 1;
+    }
+    .game .delete-game-btn {
+      margin-left: 10px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 0.8em;
+      cursor: pointer;
+    }
 
-    /* モーダル関連 */
+    /* モーダル */
     .modal {
       display: none;
       position: fixed;
@@ -92,14 +119,38 @@
 </head>
 <body>
   <h1>対戦履歴</h1>
+
+  <div class="filter-box">
+    <label>開始日: <input type="date" id="startDate"></label>
+    <label>終了日: <input type="date" id="endDate"></label>
+  </div>
+
   <div id="historyContainer"></div>
 
-  <!-- 削除確認モーダル -->
-  <div id="deleteModal" class="modal">
+  <!-- 削除確認モーダル（半荘） -->
+  <div id="gameDeleteModal" class="modal">
     <div class="modal-content">
-      <h3>本当に削除しますか？</h3>
+      <h3>この半荘を削除してもよろしいですか？</h3>
+      <button id="confirmGameDeleteBtn" class="delete-button">削除する</button>
+      <button onclick="closeModal()">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル（セッション 1/2） -->
+  <div id="sessionDeleteModal1" class="modal">
+    <div class="modal-content">
+      <h3>この回を削除しますか？</h3>
+      <button id="nextDeleteStep" class="delete-button">はい</button>
+      <button onclick="closeModal()">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- 最終削除確認モーダル（セッション 2/2） -->
+  <div id="sessionDeleteModal2" class="modal">
+    <div class="modal-content">
+      <h3>本当に削除してもよろしいですか？</h3>
       <p>この操作は取り消せません。</p>
-      <button id="confirmDeleteBtn" class="delete-button">削除する</button>
+      <button id="confirmSessionDeleteBtn" class="delete-button">完全に削除する</button>
       <button onclick="closeModal()">キャンセル</button>
     </div>
   </div>
@@ -125,53 +176,105 @@ const firebaseConfig = {
   projectId: "mahjong-app-2e2e9",
   storageBucket: "mahjong-app-2e2e9.appspot.com",
   messagingSenderId: "440425002404",
-  appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
-  measurementId: "G-NP9EELBD7R"
+  appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+let allSessions = [];
 let sessionToDelete = null;
 let sessionToAdd = null;
+let gameToDelete = { sessionId: null, index: null };
+
+document.getElementById("startDate").value = new Date().toISOString().split("T")[0];
+document.getElementById("endDate").value = new Date().toISOString().split("T")[0];
+
+document.getElementById("startDate").addEventListener("change", displaySessions);
+document.getElementById("endDate").addEventListener("change", displaySessions);
 
 async function loadSessions() {
   const snapshot = await getDocs(collection(db, "sessions"));
+  allSessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  displaySessions();
+}
+
+function displaySessions() {
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
   const container = document.getElementById("historyContainer");
   container.innerHTML = "";
 
-  snapshot.docs.forEach(docSnap => {
-    const session = docSnap.data();
-    const sessionId = docSnap.id;
+  const filtered = allSessions.filter(s => {
+    const date = s.title;
+    return (!start || date >= start) && (!end || date <= end);
+  });
+
+  filtered.forEach(session => {
     const div = document.createElement("div");
     div.className = "session";
+
+    const sessionId = session.id;
+
+    const gamesHTML = session.games.map((g, i) => `
+      <div class="game">
+        <div class="text">${g.date}：${g.players.map(p => `${p.name}(${p.point})`).join("、")}</div>
+        <button class="delete-game-btn" onclick="confirmGameDelete('${sessionId}', ${i})">🗑</button>
+      </div>
+    `).join("");
+
     div.innerHTML = `
       <div class="session-header">
         <h3>${session.title}</h3>
         <button class="edit-button" onclick="toggleAction('${sessionId}')">編集</button>
       </div>
-      ${session.games.map(g => `
-        <div class="game">${g.date}：
-          ${g.players.map(p => `${p.name}(${p.point})`).join("、")}
-        </div>
-      `).join("")}
+      ${gamesHTML}
       <div class="action-panel" id="action-${sessionId}">
         <button onclick="openAddModal('${sessionId}')">半荘を追加</button>
-        <button class="delete-button" onclick="confirmDelete('${sessionId}')">回を削除</button>
+        <button class="delete-button" onclick="beginDeleteSession('${sessionId}')">回を削除</button>
       </div>
     `;
+
     container.appendChild(div);
   });
 }
 
 window.toggleAction = function(sessionId) {
   const panel = document.getElementById(`action-${sessionId}`);
-  panel.style.display = (panel.style.display === "block") ? "none" : "block";
+  panel.style.display = panel.style.display === "block" ? "none" : "block";
 };
 
-window.confirmDelete = function(id) {
+window.beginDeleteSession = function(id) {
   sessionToDelete = id;
-  document.getElementById("deleteModal").style.display = "block";
+  document.getElementById("sessionDeleteModal1").style.display = "block";
+};
+
+document.getElementById("nextDeleteStep").onclick = () => {
+  document.getElementById("sessionDeleteModal1").style.display = "none";
+  document.getElementById("sessionDeleteModal2").style.display = "block";
+};
+
+document.getElementById("confirmSessionDeleteBtn").onclick = async () => {
+  if (!sessionToDelete) return;
+  await deleteDoc(doc(db, "sessions", sessionToDelete));
+  closeModal();
+  await loadSessions();
+};
+
+window.confirmGameDelete = function(sessionId, index) {
+  gameToDelete = { sessionId, index };
+  document.getElementById("gameDeleteModal").style.display = "block";
+};
+
+document.getElementById("confirmGameDeleteBtn").onclick = async () => {
+  const { sessionId, index } = gameToDelete;
+  const ref = doc(db, "sessions", sessionId);
+  const snap = await getDoc(ref);
+  const data = snap.data();
+  data.games.splice(index, 1);
+  await updateDoc(ref, { games: data.games });
+  closeModal();
+  await loadSessions();
 };
 
 window.openAddModal = async function(sessionId) {
@@ -199,19 +302,6 @@ window.openAddModal = async function(sessionId) {
   }
 
   document.getElementById("addModal").style.display = "block";
-};
-
-window.closeModal = function() {
-  document.querySelectorAll(".modal").forEach(m => m.style.display = "none");
-  sessionToDelete = null;
-  sessionToAdd = null;
-};
-
-document.getElementById("confirmDeleteBtn").onclick = async () => {
-  if (!sessionToDelete) return;
-  await deleteDoc(doc(db, "sessions", sessionToDelete));
-  closeModal();
-  await loadSessions();
 };
 
 document.getElementById("saveGameBtn").onclick = async () => {
@@ -250,6 +340,13 @@ document.getElementById("saveGameBtn").onclick = async () => {
 
   closeModal();
   await loadSessions();
+};
+
+window.closeModal = function() {
+  document.querySelectorAll(".modal").forEach(m => m.style.display = "none");
+  sessionToDelete = null;
+  sessionToAdd = null;
+  gameToDelete = { sessionId: null, index: null };
 };
 
 loadSessions();
