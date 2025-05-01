@@ -199,9 +199,6 @@ let sessionToDelete = null;
 let sessionToAdd = null;
 let gameToDelete = { sessionId: null, index: null };
 
-document.getElementById("startDate").value = new Date().toISOString().split("T")[0];
-document.getElementById("endDate").value = new Date().toISOString().split("T")[0];
-
 document.getElementById("startDate").addEventListener("change", displaySessions);
 document.getElementById("endDate").addEventListener("change", displaySessions);
 
