@@ -63,6 +63,44 @@
     }
     .modal-content h3 { margin-top: 0; }
     .modal input { width: 100%; margin-bottom: 10px; padding: 8px; font-size: 16px; }
+    /* 成績テーブルスタイル */
+    .history-section table {
+     width: 100%;
+     border-collapse: collapse;
+     margin-top: 10px;
+    }
+    .history-section th,
+    .history-section td {
+     border: 1px solid #ccc;
+     padding: 8px;
+     text-align: right;
+     font-size: 15px;
+    }
+    .history-section th {
+     background-color: #007bff;
+     color: white;
+     text-align: center;
+    }
+    .history-section tr:nth-child(even) {
+     background-color: #f9f9f9;
+    }
+    .history-section tr:hover {
+     background-color: #f1f1f1;
+    } 
+    .history-section .money-row td {
+     font-weight: bold;
+     background-color: #e8f5e9;
+     color: #2e7d32;
+    }
+    .rate-input-wrapper {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+    }
+    .rate-input-wrapper input {
+     width: 100px; 
+    }
+
   </style>
 </head>
 <body>
@@ -77,6 +115,13 @@
     <div id="playersContainer"></div>
     <div id="pointSumDisplay" class="sum-warning"></div>
     <button class="main-button" onclick="saveRecord()">保存</button>
+  </div>
+  <div class="form-section rate-box">
+   <label for="rateInput">レート（1ポイントあたり）：</label>
+   <div class="rate-input-wrapper">
+    <input type="number" id="rateInput" value="50" oninput="updateSessionTable()" />
+    <span>コイン</span>
+   </div>
   </div>
 
   <div class="history-section">
@@ -263,29 +308,57 @@
     }
   }
   function renderSessionHistory(games) {
-    const container = document.getElementById("sessionHistory");
-    if (!games || games.length === 0) {
-      container.innerHTML = "履歴はまだありません。";
-      return;
-    }
-    container.innerHTML = "";
-    games.forEach((game, index) => {
-      const div = document.createElement("div");
-      div.className = "history-item";
-      div.innerHTML = `
-        ${game.date}：
-        ${game.players.map(p => {
-          const color = p.point < 0 ? 'red' : 'blue';
-          return `<span style="color:${color}">${p.name}(${p.point})</span>`;
-        }).join("、")}
-        <div class="action-buttons">
-          <button class="edit-button" onclick="editGame(${index})">編集</button>
-          <button class="delete-button" onclick="deleteGame(${index})">削除</button>
-        </div>
-      `;
-      container.appendChild(div);
+   const container = document.getElementById("sessionHistory");
+   if (!games || games.length === 0) {
+    container.innerHTML = "履歴はまだありません。";
+    return;
+   }
+   
+   const allNamesSet = new Set();
+   games.forEach(g => g.players.forEach(p => allNamesSet.add(p.name)));
+   const allNames = Array.from(allNamesSet);
+   
+   let html = '<table>';
+   html += `<tr><th>日付</th>${allNames.map(name => `<th>${name}</th>`).join("")}</tr>`;
+   
+   const totals = {};
+   allNames.forEach(name => totals[name] = 0);
+   
+   games.forEach((game) => {
+    html += `<tr><td>${game.date}</td>`;
+    allNames.forEach(name => {
+      const player = game.players.find(p => p.name === name);
+      const val = player ? player.point : "";
+      if (player) totals[name] += player.point;
+      const color = player ? (player.point < 0 ? 'red' : 'blue') : '';
+      html += `<td style="color:${color}">${val}</td>`;
     });
+    html += '</tr>';
+   });
+    
+   html += `<tr style="font-weight:bold; background-color:#f0f0f0;">
+    <td>合計</td>
+    ${allNames.map(name => {
+      const val = totals[name].toFixed(1);
+      const color = totals[name] < 0 ? 'red' : 'blue';
+      return `<td style="color:${color}">${val}</td>`;
+    }).join("")}
+   </tr>`;
+   
+   const rate = parseFloat(document.getElementById("rateInput")?.value || 0);
+   html += `<tr class="money-row">
+    <td>換算</td>
+    ${allNames.map(name => {
+      const coin = Math.round(totals[name] * rate);
+      const color = coin < 0 ? 'red' : 'blue';
+      return `<td style="color:${color}">${coin} コイン</td>`;
+    }).join("")}
+   </tr>`;
+   
+   html += '</table>';
+   container.innerHTML = html;
   }
+
 
   async function deleteGame(index) {
     const sessionDoc = doc(db, "sessions", currentSessionId);
@@ -358,6 +431,17 @@
   // ボタンが呼び出せるようにグローバル登録
   window.startNewSession = startNewSession;
   window.saveRecord = saveRecord;
+
+  function updateSessionTable() {
+   if (!currentSessionId) return;
+   const sessionDoc = doc(db, "sessions", currentSessionId);
+   getDoc(sessionDoc).then(snap => {
+    if (snap.exists()) {
+      renderSessionHistory(snap.data().games);
+    }
+   });
+  }
+ 
 
 </script>
 </body>
