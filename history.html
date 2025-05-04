@@ -204,8 +204,7 @@
         div.className = "session";
         const sessionId = session.id;
       
-        const gamesHTML = session.games.map((g, i) => 
-　　　　`// 各プレイヤーのセッション合計ポイントを計算
+　　　　// 各プレイヤーのセッション合計ポイントを計算
         const sessionPoints = {};
         session.games.forEach(g => {
          g.players.forEach(p => {
@@ -224,6 +223,7 @@
          </div>
       `;
 
+        const gamesHTML = session.games.map((g, i) =>`
           <div class="game">
             <div class="text">${g.date}：${g.players.map(p => `${p.name}(${p.point})`).join("、")}</div>
             <button class="delete-game-btn" onclick="confirmGameDelete('${sessionId}', ${i})">🗑</button>

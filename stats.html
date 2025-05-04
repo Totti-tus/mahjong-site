@@ -181,6 +181,11 @@ function calculateStats(sessions) {
         }
         const data = playerData[p.name];
         data.games++;
+        if (i === 0) data.tops++;
+        else if (i === 1) data.seconds++;
+        else if (i === 2) data.thirds++;
+        else if (i === 3) data.fourths++;
+
         data.totalRank += (i + 1);
         data.totalPoint += Number(p.point.toFixed(1));
         data.pointHistory.push(p.point);
