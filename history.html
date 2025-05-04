@@ -203,8 +203,27 @@
         const div = document.createElement("div");
         div.className = "session";
         const sessionId = session.id;
+      
+        const gamesHTML = session.games.map((g, i) => 
+　　　　`// 各プレイヤーのセッション合計ポイントを計算
+        const sessionPoints = {};
+        session.games.forEach(g => {
+         g.players.forEach(p => {
+          if (!sessionPoints[p.name]) sessionPoints[p.name] = 0;
+          sessionPoints[p.name] += p.point;
+         });
+        });
+         
+         // 合計ポイント表をHTMLに変換
+        const summaryHTML = `
+         <div style="margin-top:10px; background:#eef; border-radius:6px; padding:8px;">
+          <strong>合計ポイント</strong><br>
+          ${Object.entries(sessionPoints)
+           .map(([name, point]) => `${name}: ${point >= 0 ? '+' : ''}${point.toFixed(1)}pt`)
+           .join('<br>')}
+         </div>
+      `;
 
-        const gamesHTML = session.games.map((g, i) => `
           <div class="game">
             <div class="text">${g.date}：${g.players.map(p => `${p.name}(${p.point})`).join("、")}</div>
             <button class="delete-game-btn" onclick="confirmGameDelete('${sessionId}', ${i})">🗑</button>
@@ -217,6 +236,7 @@
             <button class="edit-button" onclick="toggleAction('${sessionId}')">編集</button>
           </div>
           ${gamesHTML}
+          ${summaryHTML}
           <div class="action-panel" id="action-${sessionId}">
             <button onclick="openAddModal('${sessionId}')">半荘を追加</button>
             <button class="delete-button" onclick="beginDeleteSession('${sessionId}')">回を削除</button>
