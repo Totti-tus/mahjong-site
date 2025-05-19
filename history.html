@@ -1,161 +1,55 @@
-
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>対戦履歴</title>
-<style>
-    body {
-      font-family: sans-serif;
-      background-color: #f0f0f0;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-    .filter-box {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .filter-box input {
-      padding: 8px;
-      margin: 5px;
-      font-size: 14px;
-    }
-    .session {
-      background: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      padding: 15px;
-      margin-bottom: 20px;
-    }
-    .session-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    .edit-button,
-    .action-panel button {
-      margin-left: 8px;
-      padding: 5px 10px;
-      border: none;
-      border-radius: 6px;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
-    }
-    .edit-button:hover,
-    .action-panel button:hover {
-      background: #0056b3;
-    }
-    .action-panel {
-      display: none;
-      margin: 10px 0;
-      transition: box-shadow 0.3s ease;
-    }
-    .delete-button {
-      background: #dc3545;
-    }
-    .game {
-      background: #f8f8f8;
-      border-radius: 5px;
-      padding: 8px;
-      margin: 5px 0;
-      display: flex;
-      justify-content: space-between;
-    }
-    .game .text {
-      flex-grow: 1;
-    }
-    .game .delete-game-btn {
-      margin-left: 10px;
-      background: #dc3545;
-      color: white;
-      border: none;
-      padding: 3px 6px;
-      border-radius: 4px;
-      font-size: 0.8em;
-      cursor: pointer;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
-      background-color: rgba(0, 0, 0, 0.4);
-    }
-    .modal-content {
-      background-color: white;
-      margin: 10% auto;
-      padding: 20px;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 400px;
-    }
-    .modal-content input, .modal-content select {
-      display: block;
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      font-size: 14px;
-    }
-    .modal-content button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-    }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>対戦履歴</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f0f0f0; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 10px; }
+    .filter-box { text-align: center; margin-bottom: 20px; }
+    .filter-box input { padding: 8px; margin: 5px; font-size: 14px; }
+    .session { background: #ffffff; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 15px; margin-bottom: 20px; }
+    .session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .edit-button, .action-panel button { margin-left: 8px; padding: 5px 10px; border: none; border-radius: 6px; background: #007bff; color: white; cursor: pointer; }
+    .edit-button:hover, .action-panel button:hover { background: #0056b3; }
+    .game { background: #f8f8f8; border-radius: 5px; padding: 8px; margin: 5px 0; display: flex; justify-content: space-between; }
+    .game .text { flex-grow: 1; }
+    .game .delete-game-btn { margin-left: 10px; background: #dc3545; color: white; border: none; padding: 3px 6px; border-radius: 4px; font-size: 0.8em; cursor: pointer; }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); }
+    .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .modal-content h3 { margin-top: 0; }
+    .modal input, .modal select { width: 100%; margin-bottom: 10px; padding: 8px; font-size: 16px; }
+    .modal .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 <h1>対戦履歴</h1>
-<button onclick="location.href='index.html'" style="display:block;margin:0 auto 20px;padding:12px 24px;background-color:#007bff;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;">ホームに戻る</button>
 <div class="filter-box">
-<label>開始日: <input id="startDate" type="date"/></label>
-<label>終了日: <input id="endDate" type="date"/></label>
+  <label>開始日: <input id="startDate" type="date" /></label>
+  <label>終了日: <input id="endDate" type="date" /></label>
 </div>
 <div id="historyContainer"></div>
-<!-- 各種モーダル -->
-<div class="modal" id="gameDeleteModal">
-<div class="modal-content">
-<h3>この半荘を削除してもよろしいですか？</h3>
-<button class="delete-button" id="confirmGameDeleteBtn">削除する</button>
-<button onclick="closeModal()">キャンセル</button>
-</div>
-</div>
-<div class="modal" id="sessionDeleteModal1">
-<div class="modal-content">
-<h3>この回を削除しますか？</h3>
-<button class="delete-button" id="nextDeleteStep">はい</button>
-<button onclick="closeModal()">キャンセル</button>
-</div>
-</div>
-<div class="modal" id="sessionDeleteModal2">
-<div class="modal-content">
-<h3>本当に削除してもよろしいですか？</h3>
-<p>この操作は取り消せません。</p>
-<button class="delete-button" id="confirmSessionDeleteBtn">完全に削除する</button>
-<button onclick="closeModal()">キャンセル</button>
-</div>
-</div>
 <div class="modal" id="addModal">
-<div class="modal-content">
-<h3>半荘を追加</h3>
-<div id="addFormContainer"></div>
-<button id="saveGameBtn">追加保存</button>
-<button onclick="closeModal()">キャンセル</button>
+  <div class="modal-content">
+    <h3>半荘を追加</h3>
+    <div id="addForm"></div>
+    <button onclick="saveNewHanchan()">保存</button>
+    <button onclick="closeModal()">キャンセル</button>
+  </div>
 </div>
+<div class="modal" id="deleteModal">
+  <div class="modal-content">
+    <h3>削除確認</h3>
+    <p>この半荘を削除しますか？</p>
+    <button onclick="confirmDeleteGame()">削除</button>
+    <button onclick="closeDeleteModal()">キャンセル</button>
+  </div>
 </div>
-<!-- JavaScript -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, deleteDoc, doc, updateDoc, onSnapshot
+  getFirestore, collection, getDocs, onSnapshot, doc, updateDoc, getDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -173,39 +67,109 @@ const sessionsRef = collection(db, "sessions");
 const playersRef = collection(db, "players");
 
 let playerMap = {};
+let playerList = [];
+let targetSessionId = null;
+let targetGameIndex = null;
 
 async function loadPlayerMap() {
   const snap = await getDocs(playersRef);
   snap.forEach(doc => {
     const data = doc.data();
     playerMap[data.id] = data.name;
+    playerList.push(data);
   });
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadPlayerMap();
-  onSnapshot(sessionsRef, snapshot => {
-    const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    displaySessions(sessions);
+function openModal(sessionId) {
+  const form = document.getElementById("addForm");
+  form.innerHTML = "";
+  for (let i = 0; i < 4; i++) {
+    const row = document.createElement("div");
+    row.className = "player-row";
+
+    const select = document.createElement("select");
+    playerList.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.placeholder = "ポイント";
+
+    row.appendChild(select);
+    row.appendChild(input);
+    form.appendChild(row);
+  }
+  document.getElementById("addModal").style.display = "block";
+  targetSessionId = sessionId;
+}
+
+function closeModal() {
+  document.getElementById("addModal").style.display = "none";
+}
+
+function saveNewHanchan() {
+  const rows = document.querySelectorAll("#addForm .player-row");
+  const players = Array.from(rows).map(row => {
+    const point = parseFloat(row.querySelector("input").value);
+    return {
+      id: row.querySelector("select").value,
+      point: isNaN(point) ? NaN : point
+    };
   });
-});
+  if (players.some(p => isNaN(p.point))) {
+    alert("すべてのプレイヤーの点数を入力してください");
+    return;
+  }
+  const sum = players.reduce((a, b) => a + b.point, 0);
+  if (Math.abs(sum) > 0.01) {
+    alert("合計が±0ではありません");
+    return;
+  }
+  const sessionDoc = doc(db, "sessions", targetSessionId);
+  getDoc(sessionDoc).then(snap => {
+    const data = snap.data();
+    const newGames = data.games.concat([{ date: new Date().toISOString().slice(0,10), players }]);
+    updateDoc(sessionDoc, { games: newGames });
+    closeModal();
+  });
+}
+
+function openDeleteModal(sessionId, gameIndex) {
+  targetSessionId = sessionId;
+  targetGameIndex = gameIndex;
+  document.getElementById("deleteModal").style.display = "block";
+}
+
+function closeDeleteModal() {
+  document.getElementById("deleteModal").style.display = "none";
+}
+
+function confirmDeleteGame() {
+  const sessionDoc = doc(db, "sessions", targetSessionId);
+  getDoc(sessionDoc).then(snap => {
+    const data = snap.data();
+    data.games.splice(targetGameIndex, 1);
+    updateDoc(sessionDoc, { games: data.games });
+    closeDeleteModal();
+  });
+}
 
 function displaySessions(sessions) {
   const container = document.getElementById("historyContainer");
   container.innerHTML = "";
-
-  sessions.sort((a, b) => (a.title > b.title ? -1 : 1));
   const start = document.getElementById("startDate").value;
   const end = document.getElementById("endDate").value;
   const filtered = sessions.filter(s => (!start || s.title >= start) && (!end || s.title <= end));
+  filtered.sort((a, b) => b.title.localeCompare(a.title));
 
   filtered.forEach(session => {
     const div = document.createElement("div");
     div.className = "session";
 
-    const sessionId = session.id;
-
-    // セッション内の合計ポイント集計
     const sessionPoints = {};
     session.games.forEach(g => {
       g.players.forEach(p => {
@@ -214,66 +178,36 @@ function displaySessions(sessions) {
       });
     });
 
-    const summaryHTML = `
-      <div style="margin-top:10px; background:#eef; border-radius:6px; padding:8px;">
-        <strong>合計ポイント</strong><br>
-        ${Object.entries(sessionPoints)
-          .map(([id, point]) => `${playerMap[id] || id}: ${point >= 0 ? '+' : ''}${point.toFixed(1)}pt`)
-          .join('<br>')}
-      </div>
-    `;
+    const summaryHTML = `<div style="margin-top:10px; background:#eef; border-radius:6px; padding:8px;">
+      <strong>合計ポイント</strong><br>
+      ${Object.entries(sessionPoints).map(([id, pt]) => `${playerMap[id] || id}: ${pt >= 0 ? '+' : ''}${pt.toFixed(1)}pt`).join('<br>')}
+    </div>`;
 
     const gamesHTML = session.games.map((g, i) => `
       <div class="game">
         <div class="text">${g.date}：${g.players.map(p => `${playerMap[p.id] || p.id}(${p.point})`).join("、")}</div>
-        <button class="delete-game-btn" onclick="confirmGameDelete('${sessionId}', ${i})">🗑</button>
-      </div>
-    `).join("");
+        <button class="delete-game-btn" onclick="openDeleteModal('${session.id}', ${i})">🗑</button>
+      </div>`).join("");
 
     div.innerHTML = `
       <div class="session-header">
         <h3>${session.title}</h3>
-        <button class="edit-button" onclick="toggleAction('${sessionId}')">編集</button>
+        <button class="edit-button" onclick="openModal('${session.id}')">半荘を追加</button>
       </div>
       ${gamesHTML}
-      ${summaryHTML}
-      <div class="action-panel" id="action-${sessionId}">
-        <button onclick="openAddModal('${sessionId}')">半荘を追加</button>
-        <button class="delete-button" onclick="beginDeleteSession('${sessionId}')">回を削除</button>
-      </div>
-    `;
+      ${summaryHTML}`;
+
     container.appendChild(div);
   });
 }
 
-window.beginDeleteSession = function(id) {
-  if (confirm("本当に削除しますか？")) {
-    deleteDoc(doc(db, "sessions", id));
-  }
-};
-
-window.toggleAction = function(id) {
-  const target = document.getElementById("action-" + id);
-  target.style.display = target.style.display === "block" ? "none" : "block";
-};
-
-window.openAddModal = function(sessionId) {
-  const date = prompt("日付を入力してください (例: 2025-05-20)");
-  if (!date) return;
-
-  const names = prompt("プレイヤーIDと得点をカンマ区切りで入力 (例: player_1,40.0 player_2,-10.0)");
-  if (!names) return;
-
-  const players = names.split(" ").map(pair => {
-    const [id, pt] = pair.split(",");
-    return { id, point: parseFloat(pt) };
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadPlayerMap();
+  onSnapshot(sessionsRef, snap => {
+    const sessions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    displaySessions(sessions);
   });
-
-  updateDoc(doc(db, "sessions", sessionId), {
-    games: [...(sessions.find(s => s.id === sessionId).games || []), { date, players }]
-  });
-};
-
+});
 </script>
 </body>
 </html>
