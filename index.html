@@ -1,10 +1,12 @@
+
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>麻雀成績管理 - ホーム</title>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>麻雀成績管理 - ホーム</title>
+<style>
     :root {
       --primary-color: #007bff;
       --primary-hover: #0056b3;
@@ -73,68 +75,74 @@
   </style>
 </head>
 <body>
-  <h1>麻雀成績管理</h1>
-  <button class="main-button" onclick="location.href='member.html'">① メンバー登録</button>
-  <button class="main-button" onclick="location.href='record.html'">② 成績登録</button>
-  <button class="main-button" onclick="location.href='history.html'">③ 対戦履歴</button>
-  <button class="main-button" onclick="location.href='stats.html'">④ 成績表（個人成績）</button>
+<h1>麻雀成績管理</h1>
+<button class="main-button" onclick="location.href='member.html'">① メンバー登録</button>
+<button class="main-button" onclick="location.href='record.html'">② 成績登録</button>
+<button class="main-button" onclick="location.href='history.html'">③ 対戦履歴</button>
+<button class="main-button" onclick="location.href='stats.html'">④ 成績表（個人成績）</button>
+<div class="ranking">
+<h2>🏆 総合ポイントランキング 🏆</h2>
+<ul class="ranking-list" id="rankingList"></ul>
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  <div class="ranking">
-    <h2>🏆 総合ポイントランキング 🏆</h2>
-    <ul class="ranking-list" id="rankingList"></ul>
-  </div>
+const firebaseConfig = {
+  apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+  authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+  projectId: "mahjong-app-2e2e9",
+  storageBucket: "mahjong-app-2e2e9.appspot.com",
+  messagingSenderId: "440425002404",
+  appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+};
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const sessionsRef = collection(db, "sessions");
+const playersRef = collection(db, "players");
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-      projectId: "mahjong-app-2e2e9",
-      storageBucket: "mahjong-app-2e2e9.appspot.com",
-      messagingSenderId: "440425002404",
-      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
-      measurementId: "G-NP9EELBD7R"
-    };
+const playerMap = {};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+async function loadPlayerMap() {
+  const snap = await getDocs(playersRef);
+  snap.forEach(doc => {
+    const data = doc.data();
+    playerMap[data.id] = data.name;
+  });
+}
 
-    async function buildRanking() {
-      const sessionsRef = collection(db, "sessions");
-      const snapshot = await getDocs(sessionsRef);
-      const playerStats = {};
+async function calculateRanking() {
+  await loadPlayerMap();
 
-      snapshot.docs.forEach(doc => {
-        const session = doc.data();
-        if (!session.games) return;
-        session.games.forEach(game => {
-          game.players.forEach(p => {
-            if (!playerStats[p.name]) playerStats[p.name] = 0;
-            playerStats[p.name] += p.point;
-          });
-        });
+  const snap = await getDocs(sessionsRef);
+  const sessions = snap.docs.map(doc => doc.data());
+
+  const totals = {};
+
+  sessions.forEach(session => {
+    session.games.forEach(game => {
+      game.players.forEach(p => {
+        if (!totals[p.id]) totals[p.id] = 0;
+        totals[p.id] += p.point;
       });
+    });
+  });
 
-      const sorted = Object.entries(playerStats).sort((a, b) => b[1] - a[1]);
-      const list = document.getElementById("rankingList");
-      list.innerHTML = "";
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
 
-      sorted.forEach(([name, point], index) => {
-        const li = document.createElement("li");
-        let medal = "", rankClass = "";
-        if (index === 0) { medal = "🥇"; rankClass = "gold"; }
-        else if (index === 1) { medal = "🥈"; rankClass = "silver"; }
-        else if (index === 2) { medal = "🥉"; rankClass = "bronze"; }
+  const list = document.getElementById("ranking");
+  list.innerHTML = "";
+  sorted.forEach(([id, point], i) => {
+    const li = document.createElement("li");
+    li.textContent = `${i + 1}位: ${playerMap[id] || id}（${point >= 0 ? "+" : ""}${point.toFixed(1)}pt）`;
+    list.appendChild(li);
+  });
+}
 
-        li.className = rankClass;
-        li.innerHTML = `<span>${medal} ${index + 1}位 ${name}</span><span>${point >= 0 ? "+" : ""}${point.toFixed(1)}pt</span>`;
-        list.appendChild(li);
-      });
-    }
-
-    buildRanking();
-  </script>
+document.addEventListener("DOMContentLoaded", calculateRanking);
+</script>
 </body>
 </html>
