@@ -133,11 +133,14 @@ async function calculateRanking() {
 
   const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
 
-  const list = document.getElementById("ranking");
+  const list = document.getElementById("rankingList");
   list.innerHTML = "";
   sorted.forEach(([id, point], i) => {
     const li = document.createElement("li");
     li.textContent = `${i + 1}位: ${playerMap[id] || id}（${point >= 0 ? "+" : ""}${point.toFixed(1)}pt）`;
+    if (i === 0) li.classList.add("gold");
+     else if (i === 1) li.classList.add("silver");
+     else if (i === 2) li.classList.add("bronze");
     list.appendChild(li);
   });
 }
