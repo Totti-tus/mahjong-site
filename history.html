@@ -189,6 +189,10 @@ async function loadAndDisplay() {
 document.getElementById("startDate").addEventListener("change", loadAndDisplay);
 document.getElementById("endDate").addEventListener("change", loadAndDisplay);
 loadAndDisplay();
+
+window.openAddModal = openAddModal;
+window.deleteGame = deleteGame;
+
 </script>
 </body>
 </html>
