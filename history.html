@@ -191,7 +191,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function displaySessions(sessions) {
-  const container = document.getElementById("sessionList");
+  const container = document.getElementById("historyContainer");
   container.innerHTML = "";
 
   sessions.sort((a, b) => (a.title > b.title ? -1 : 1));
