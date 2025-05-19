@@ -9,6 +9,17 @@
     h1 { text-align: center; margin-bottom: 10px; }
     .filter-box { text-align: center; margin-bottom: 20px; }
     .filter-box input { padding: 8px; margin: 5px; font-size: 14px; }
+    .top-nav { text-align: center; margin-bottom: 20px; }
+    .main-button {
+      background: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .main-button:hover { background-color: #0056b3; }
     .session { background: #ffffff; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 15px; margin-bottom: 20px; }
     .session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .edit-button, .action-panel button {
@@ -30,11 +41,16 @@
 </head>
 <body>
 <h1>対戦履歴</h1>
+<div class="top-nav">
+  <button class="main-button" onclick="location.href='index.html'">ホームに戻る</button>
+</div>
 <div class="filter-box">
   <label>開始日: <input id="startDate" type="date" /></label>
   <label>終了日: <input id="endDate" type="date" /></label>
 </div>
 <div id="historyContainer"></div>
+<!-- 以降スクリプト等は変更なし -->
+
 <div id="addModal" class="modal">
   <div class="modal-content">
     <h3>半荘を追加</h3>
@@ -192,7 +208,8 @@ loadAndDisplay();
 
 window.openAddModal = openAddModal;
 window.deleteGame = deleteGame;
-
+window.saveNewHanchan = saveNewHanchan;
+window.closeModal = closeModal;
 </script>
 </body>
 </html>
