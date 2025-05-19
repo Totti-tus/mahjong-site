@@ -21,6 +21,11 @@
     .game .text { flex-grow: 1; }
     .game .delete-game-btn { margin-left: 10px; background: #dc3545; color: white; border: none; padding: 3px 6px; border-radius: 4px; font-size: 0.8em; cursor: pointer; }
     .summary-box { background: #eef; padding: 8px; border-radius: 6px; margin-top: 10px; font-size: 14px; }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); }
+    .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .modal-content h3 { margin-top: 0; }
+    .modal-content .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .modal-content select, .modal-content input { flex: 1; padding: 8px; }
   </style>
 </head>
 <body>
@@ -30,21 +35,29 @@
   <label>終了日: <input id="endDate" type="date" /></label>
 </div>
 <div id="historyContainer"></div>
-
+<div id="addModal" class="modal">
+  <div class="modal-content">
+    <h3>半荘を追加</h3>
+    <div id="addForm"></div>
+    <button onclick="saveNewHanchan()">保存</button>
+    <button onclick="closeModal()">キャンセル</button>
+  </div>
+</div>
+<div id="deleteModal" class="modal">
+  <div class="modal-content">
+    <h3>削除確認</h3>
+    <p>この半荘を削除しますか？</p>
+    <button onclick="confirmDeleteGame()">削除</button>
+    <button onclick="closeDeleteModal()">キャンセル</button>
+  </div>
+</div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, doc, getDoc
+  getFirestore, collection, getDocs, doc, updateDoc, getDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-  authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-  projectId: "mahjong-app-2e2e9",
-  storageBucket: "mahjong-app-2e2e9.appspot.com",
-  messagingSenderId: "440425002404",
-  appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
-};
+const firebaseConfig = { apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI", authDomain: "mahjong-app-2e2e9.firebaseapp.com", projectId: "mahjong-app-2e2e9", storageBucket: "mahjong-app-2e2e9.appspot.com", messagingSenderId: "440425002404", appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31" };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -52,13 +65,47 @@ const playersRef = collection(db, "players");
 const sessionsRef = collection(db, "sessions");
 
 let playerMap = {};
+let playerList = [];
+let currentSessionId = null;
 
 async function loadPlayerMap() {
   const snap = await getDocs(playersRef);
   snap.forEach(doc => {
     const data = doc.data();
     playerMap[data.id] = data.name;
+    playerList.push(data);
   });
+}
+
+function openAddModal(sessionId) {
+  currentSessionId = sessionId;
+  const form = document.getElementById("addForm");
+  form.innerHTML = "";
+  for (let i = 0; i < 4; i++) {
+    const row = document.createElement("div");
+    row.className = "player-row";
+
+    const select = document.createElement("select");
+    playerList.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.placeholder = "ポイント";
+
+    row.appendChild(select);
+    row.appendChild(input);
+    form.appendChild(row);
+  }
+  document.getElementById("addModal").style.display = "block";
+}
+
+function closeModal() {
+  document.getElementById("addModal").style.display = "none";
 }
 
 function summarizePoints(games) {
@@ -79,13 +126,14 @@ function renderSessions(sessions) {
     const div = document.createElement("div");
     div.className = "session";
     const summary = summarizePoints(session.games);
-    const gamesHTML = session.games.map(game => {
+    const gamesHTML = session.games.map((game, i) => {
       const detail = game.players.map(p => `${playerMap[p.id] || p.id}(${p.point})`).join("、");
-      return `<div class="game"><div class="text">${game.date}：${detail}</div></div>`;
+      return `<div class="game"><div class="text">${game.date}：${detail}</div><button class="delete-game-btn" onclick="deleteGame('${session.id}', ${i})">🗑</button></div>`;
     }).join("");
     div.innerHTML = `
       <div class="session-header">
         <h3>${session.title}</h3>
+        <button class="edit-button" onclick="openAddModal('${session.id}')">半荘追加</button>
       </div>
       ${gamesHTML}
       <div class="summary-box">${summary}</div>
@@ -97,9 +145,38 @@ function renderSessions(sessions) {
 function filterSessions(sessions) {
   const start = document.getElementById("startDate").value;
   const end = document.getElementById("endDate").value;
-  return sessions.filter(s => {
-    return (!start || s.title >= start) && (!end || s.title <= end);
+  return sessions.filter(s => (!start || s.title >= start) && (!end || s.title <= end));
+}
+
+async function saveNewHanchan() {
+  const rows = document.querySelectorAll("#addForm .player-row");
+  const players = Array.from(rows).map(row => {
+    const id = row.querySelector("select").value;
+    const point = parseFloat(row.querySelector("input").value);
+    return { id, point };
   });
+  if (players.some(p => isNaN(p.point))) return alert("すべての点数を入力してください");
+  const sum = players.reduce((a, b) => a + b.point, 0);
+  if (Math.abs(sum) > 0.01) return alert("合計点が±0ではありません");
+
+  const sessionRef = doc(db, "sessions", currentSessionId);
+  const snap = await getDoc(sessionRef);
+  const data = snap.data();
+  const newGame = { date: new Date().toISOString().split("T")[0], players };
+  const newGames = data.games.concat(newGame);
+  await updateDoc(sessionRef, { games: newGames });
+  closeModal();
+  loadAndDisplay();
+}
+
+async function deleteGame(sessionId, gameIndex) {
+  if (!confirm("この半荘を削除しますか？")) return;
+  const sessionRef = doc(db, "sessions", sessionId);
+  const snap = await getDoc(sessionRef);
+  const data = snap.data();
+  data.games.splice(gameIndex, 1);
+  await updateDoc(sessionRef, { games: data.games });
+  loadAndDisplay();
 }
 
 async function loadAndDisplay() {
@@ -111,7 +188,6 @@ async function loadAndDisplay() {
 
 document.getElementById("startDate").addEventListener("change", loadAndDisplay);
 document.getElementById("endDate").addEventListener("change", loadAndDisplay);
-
 loadAndDisplay();
 </script>
 </body>
