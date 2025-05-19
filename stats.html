@@ -357,7 +357,7 @@ window.viewPlayerDetail = function(name) {
 
   document.getElementById("opponentSelect").addEventListener("change", e => {
     const opName = e.target.value;
-    const vs = p.vs[opId];
+    const vs = p.vs[opName];
     const statsDiv = document.getElementById("opponentStats");
     if (!opName || !vs) {
       statsDiv.innerHTML = "";
