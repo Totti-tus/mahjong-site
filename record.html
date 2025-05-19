@@ -227,15 +227,25 @@ async function saveRecord() {
   alert("対局を保存しました！");
   renderSessionHistory(updatedGames);
 
-  - document.querySelectorAll(".player-row select").forEach(select => select.selectedIndex = 0);
-+ // セレクトはそのままにしてリセットしない
+// プレイヤーIDを一時保持
+const selectedPlayerIds = Array.from(document.querySelectorAll(".player-row select")).map(sel => sel.value);
 
-  document.querySelectorAll(".player-row input").forEach(input => {
-    input.value = "";
-    updateInputColor(input);
-  });
+// 点数だけクリア（セレクトは変更しない）
+document.querySelectorAll(".player-row input").forEach(input => {
+  input.value = "";
+  updateInputColor(input);
+});
 
-  updatePointSum();
+// プレイヤーID + 空のスコアを保存
+const inputs = document.querySelectorAll(".player-row input");
+const values = selectedPlayerIds.map((id, i) => ({
+  id,
+  point: ""
+}));
+localStorage.setItem("inputValues", JSON.stringify(values));
+
+updatePointSum();
+
   saveInputValues();
 }
 
