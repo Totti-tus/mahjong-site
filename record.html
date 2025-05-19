@@ -137,8 +137,7 @@
 <button class="main-button" onclick="closeModal()" style="background:#6c757d;">キャンセル</button>
 </div>
 </div>
-<script type="module">let playerMap = {};
-
+<script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import {
     getFirestore, collection, addDoc, updateDoc,
@@ -164,9 +163,7 @@
 
   async function loadPlayers() {
     const snapshot = await getDocs(playersRef);
-    const players = snapshot.docs.map(d => d.data());
-    playerMap = {};
-    players.forEach(p => { playerMap[p.id] = p.name });
+    const names = snapshot.docs.map(d => d.data().name);
     const container = document.getElementById("playersContainer");
     container.innerHTML = "";
 
@@ -175,10 +172,10 @@
       row.className = "player-row";
 
       const select = document.createElement("select");
-      players.forEach(p => {
+      names.forEach(n => {
         const opt = document.createElement("option");
-        opt.value = p.id;
-        opt.textContent = p.name;
+        opt.value = n;
+        opt.textContent = n;
         select.appendChild(opt);
       });
 
@@ -280,7 +277,7 @@
     const sessionSnap = await getDoc(sessionDoc);
     const sessionData = sessionSnap.data();
     const updatedGames = sessionData.games.concat([{ date, players }]);
-    const updatedPlayers = Array.from(new Set(sessionData.players.concat(players.map(p => p.id))));
+    const updatedPlayers = Array.from(new Set(sessionData.players.concat(players.map(p => p.name))));
     await updateDoc(sessionDoc, {
       games: updatedGames,
       players: updatedPlayers
@@ -317,11 +314,11 @@
    }
    
    const allNamesSet = new Set();
-   games.forEach(g => g.players.forEach(p => allNamesSet.add(p.id)));
+   games.forEach(g => g.players.forEach(p => allNamesSet.add(p.name)));
    const allNames = Array.from(allNamesSet);
    
    let html = '<table>';
-   html += `<tr><th>日付</th>${allNames.map(name => `<th>${playerMap[name] || name}</th>`).join("")}</tr>`;
+   html += `<tr><th>日付</th>${allNames.map(name => `<th>${name}</th>`).join("")}</tr>`;
    
    const totals = {};
    allNames.forEach(name => totals[name] = 0);
@@ -329,7 +326,7 @@
    games.forEach((game) => {
     html += `<tr><td>${game.date}</td>`;
     allNames.forEach(name => {
-      const player = game.players.find(p => p.id === name);
+      const player = game.players.find(p => p.name === name);
       const val = player ? player.point : "";
       if (player) totals[name] += player.point;
       const color = player ? (player.point < 0 ? 'red' : 'blue') : '';
