@@ -108,13 +108,21 @@ async function loadPlayers() {
     const row = document.createElement("div");
     row.className = "player-row";
 
-    const select = document.createElement("select");
-    playerList.forEach(player => {
-      const opt = document.createElement("option");
-      opt.value = player.id;
-      opt.textContent = player.name;
-      select.appendChild(opt);
-    });
+   const select = document.createElement("select");
+   const defaultOption = document.createElement("option");
+   defaultOption.value = "";
+   defaultOption.textContent = "選択してください";
+   defaultOption.disabled = true;
+   defaultOption.selected = true;
+   select.appendChild(defaultOption);
+   
+   playerList.forEach(player => {
+    const opt = document.createElement("option");
+    opt.value = player.id;
+    opt.textContent = player.name;
+    select.appendChild(opt);
+   });
+
 
     const input = document.createElement("input");
     input.type = "number";
@@ -219,11 +227,14 @@ async function saveRecord() {
   alert("対局を保存しました！");
   renderSessionHistory(updatedGames);
 
-  document.querySelectorAll(".player-row select").forEach(select => select.selectedIndex = 0);
+  - document.querySelectorAll(".player-row select").forEach(select => select.selectedIndex = 0);
++ // セレクトはそのままにしてリセットしない
+
   document.querySelectorAll(".player-row input").forEach(input => {
     input.value = "";
     updateInputColor(input);
   });
+
   updatePointSum();
   saveInputValues();
 }
