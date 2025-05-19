@@ -191,7 +191,7 @@ function calculateStats(sessions) {
           playerData[p.id] = {
           id: p.id,
           name: playersMap[p.id] || p.id,
-            name: p.name, games: 0, tops: 0, seconds: 0, thirds: 0, fourths: 0,
+            games: 0, tops: 0, seconds: 0, thirds: 0, fourths: 0,
             totalRank: 0, totalPoint: 0, pointHistory: [], rankHistory: [], vs: {}, sessionHistory: []
           };
         }
@@ -209,7 +209,7 @@ function calculateStats(sessions) {
         game.players.forEach(op => {
           if (op.id === p.id) return;
           if (!data.vs[op.id]) {
-            data.vs[op.name] = { games: 0, pointDiff: 0, wins: 0 };
+            data.vs[op.id] = { games: 0, pointDiff: 0, wins: 0 };
           }
           data.vs[op.id].games++;
           data.vs[op.id].pointDiff += p.point - op.point;
@@ -313,8 +313,14 @@ window.viewPlayerDetail = function(name) {
   const minPoint = Math.min(...p.pointHistory).toFixed(1);
 
   calculateSessionSums(p);
-  const maxSession = p.sessionSums ? Math.max(...p.sessionSums).toFixed(1) : "-";
-  const minSession = p.sessionSums ? Math.min(...p.sessionSums).toFixed(1) : "-";
+  const maxIdx = p.sessionSums ? p.sessionSums.indexOf(Math.max(...p.sessionSums)) : -1;
+  const minIdx = p.sessionSums ? p.sessionSums.indexOf(Math.min(...p.sessionSums)) : -1;
+  
+  const maxSession = (p.sessionSums && maxIdx !== -1) ? 
+   `${p.sessionSums[maxIdx].toFixed(1)} pt (${p.sessionHistory[maxIdx].title})` : "-";
+  const minSession = (p.sessionSums && minIdx !== -1) ? 
+   `${p.sessionSums[minIdx].toFixed(1)} pt (${p.sessionHistory[minIdx].title})` : "-";
+
 
   const opponents = Object.keys(p.vs).sort();
   const detailDiv = document.getElementById("playerDetail");
@@ -339,7 +345,7 @@ window.viewPlayerDetail = function(name) {
         <label>対戦相手を選択：
           <select id="opponentSelect">
             <option value="">--選択してください--</option>
-            ${opponents.map(op => `<option value="${op}">${op}</option>`).join('')}
+            ${opponents.map(opId => `<option value="${opId}">${playersMap[opId] || opId}</option>`).join('')}
           </select>
         </label>
         <div id="opponentStats"></div>
@@ -351,7 +357,7 @@ window.viewPlayerDetail = function(name) {
 
   document.getElementById("opponentSelect").addEventListener("change", e => {
     const opName = e.target.value;
-    const vs = p.vs[opName];
+    const vs = p.vs[opId];
     const statsDiv = document.getElementById("opponentStats");
     if (!opName || !vs) {
       statsDiv.innerHTML = "";
