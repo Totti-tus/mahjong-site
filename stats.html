@@ -291,7 +291,7 @@ function calculateSessionSums(player) {
     player.sessionSums = player.sessionHistory.map(session => {
       return session.games
         .map(game => {
-          const me = game.players.find(p => p.name === player.name);
+          const me = game.players.find(p => p.id === player.id);
           return me ? me.point : 0;
         })
         .reduce((a, b) => a + b, 0);
