@@ -236,7 +236,7 @@ function calculateStats(sessions) {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><span class="clickable-name" onclick="viewPlayerDetail('${playersMap[p.id] || p.id}')">${playersMap[p.id] || p.id}</span></td>
+      <td><span class="clickable-name" onclick="viewPlayerDetail('${p.id}')">${p.name}</span></td>
       <td>${p.games}</td>
       <td>${p.totalPoint >= 0 ? "+" : ""}${p.totalPoint.toFixed(1)}</td>
       <td>${p.tops}</td>
