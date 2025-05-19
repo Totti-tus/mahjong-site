@@ -1,10 +1,12 @@
+
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>成績登録</title>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>成績登録</title>
+<style>
     body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
     h1 { text-align: center; }
     .form-section, .history-section {
@@ -104,41 +106,39 @@
   </style>
 </head>
 <body>
-  <h1>成績登録</h1>
-  <div class="top-nav">
-    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
-    <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
-  </div>
+<h1>成績登録</h1>
+<div class="top-nav">
+<button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+<button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
+</div>
+<div class="form-section">
+<label>日付：<input id="gameDate" type="date"/></label>
+<div id="playersContainer"></div>
+<div class="sum-warning" id="pointSumDisplay"></div>
+<button class="main-button" onclick="saveRecord()">保存</button>
+</div>
+<div class="form-section rate-box">
+<label for="rateInput">レート（1ポイントあたり）：</label>
+<div class="rate-input-wrapper">
+<input id="rateInput" oninput="updateSessionTable()" type="number" value="50"/>
+<span>コイン</span>
+</div>
+</div>
+<div class="history-section">
+<h2>この回の対局履歴</h2>
+<div id="sessionHistory">履歴はまだありません。</div>
+</div>
+<!-- 編集モーダル -->
+<div class="modal" id="editModal">
+<div class="modal-content">
+<h3>半荘の編集</h3>
+<form id="editForm"></form>
+<button class="main-button" onclick="saveEdit()">保存</button>
+<button class="main-button" onclick="closeModal()" style="background:#6c757d;">キャンセル</button>
+</div>
+</div>
+<script type="module">let playerMap = {};
 
-  <div class="form-section">
-    <label>日付：<input type="date" id="gameDate" /></label>
-    <div id="playersContainer"></div>
-    <div id="pointSumDisplay" class="sum-warning"></div>
-    <button class="main-button" onclick="saveRecord()">保存</button>
-  </div>
-  <div class="form-section rate-box">
-   <label for="rateInput">レート（1ポイントあたり）：</label>
-   <div class="rate-input-wrapper">
-    <input type="number" id="rateInput" value="50" oninput="updateSessionTable()" />
-    <span>コイン</span>
-   </div>
-  </div>
-
-  <div class="history-section">
-    <h2>この回の対局履歴</h2>
-    <div id="sessionHistory">履歴はまだありません。</div>
-  </div>
-
-  <!-- 編集モーダル -->
-  <div id="editModal" class="modal">
-    <div class="modal-content">
-      <h3>半荘の編集</h3>
-      <form id="editForm"></form>
-      <button class="main-button" onclick="saveEdit()">保存</button>
-      <button class="main-button" style="background:#6c757d;" onclick="closeModal()">キャンセル</button>
-    </div>
-  </div>
-<script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import {
     getFirestore, collection, addDoc, updateDoc,
@@ -164,7 +164,9 @@
 
   async function loadPlayers() {
     const snapshot = await getDocs(playersRef);
-    const names = snapshot.docs.map(d => d.data().name);
+    const players = snapshot.docs.map(d => d.data());
+    playerMap = {};
+    players.forEach(p => { playerMap[p.id] = p.name });
     const container = document.getElementById("playersContainer");
     container.innerHTML = "";
 
@@ -173,10 +175,10 @@
       row.className = "player-row";
 
       const select = document.createElement("select");
-      names.forEach(n => {
+      players.forEach(p => {
         const opt = document.createElement("option");
-        opt.value = n;
-        opt.textContent = n;
+        opt.value = p.id;
+        opt.textContent = p.name;
         select.appendChild(opt);
       });
 
@@ -262,9 +264,9 @@
     const date = document.getElementById('gameDate').value;
     const rows = document.querySelectorAll(".player-row");
     const players = Array.from(rows).map(row => {
-      const name = row.querySelector("select").value;
+      const id = row.querySelector("select").value;
       const point = Number(parseFloat(row.querySelector("input").value).toFixed(1));
-      return { name, point };
+      return { id, point };
     });
 
     const sum = players.reduce((acc, p) => acc + p.point, 0);
@@ -278,7 +280,7 @@
     const sessionSnap = await getDoc(sessionDoc);
     const sessionData = sessionSnap.data();
     const updatedGames = sessionData.games.concat([{ date, players }]);
-    const updatedPlayers = Array.from(new Set(sessionData.players.concat(players.map(p => p.name))));
+    const updatedPlayers = Array.from(new Set(sessionData.players.concat(players.map(p => p.id))));
     await updateDoc(sessionDoc, {
       games: updatedGames,
       players: updatedPlayers
@@ -315,11 +317,11 @@
    }
    
    const allNamesSet = new Set();
-   games.forEach(g => g.players.forEach(p => allNamesSet.add(p.name)));
+   games.forEach(g => g.players.forEach(p => allNamesSet.add(p.id)));
    const allNames = Array.from(allNamesSet);
    
    let html = '<table>';
-   html += `<tr><th>日付</th>${allNames.map(name => `<th>${name}</th>`).join("")}</tr>`;
+   html += `<tr><th>日付</th>${allNames.map(name => `<th>${playerMap[name] || name}</th>`).join("")}</tr>`;
    
    const totals = {};
    allNames.forEach(name => totals[name] = 0);
@@ -327,7 +329,7 @@
    games.forEach((game) => {
     html += `<tr><td>${game.date}</td>`;
     allNames.forEach(name => {
-      const player = game.players.find(p => p.name === name);
+      const player = game.players.find(p => p.id === name);
       const val = player ? player.point : "";
       if (player) totals[name] += player.point;
       const color = player ? (player.point < 0 ? 'red' : 'blue') : '';
@@ -446,4 +448,3 @@
 </script>
 </body>
 </html>
-
