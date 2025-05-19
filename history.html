@@ -11,16 +11,16 @@
     .filter-box input { padding: 8px; margin: 5px; font-size: 14px; }
     .session { background: #ffffff; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 15px; margin-bottom: 20px; }
     .session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .edit-button, .action-panel button { margin-left: 8px; padding: 5px 10px; border: none; border-radius: 6px; background: #007bff; color: white; cursor: pointer; }
+    .edit-button, .action-panel button {
+      margin-left: 8px; padding: 5px 10px; border: none; border-radius: 6px;
+      background: #007bff; color: white; cursor: pointer;
+    }
     .edit-button:hover, .action-panel button:hover { background: #0056b3; }
+    .action-panel { display: none; margin-top: 10px; }
     .game { background: #f8f8f8; border-radius: 5px; padding: 8px; margin: 5px 0; display: flex; justify-content: space-between; }
     .game .text { flex-grow: 1; }
     .game .delete-game-btn { margin-left: 10px; background: #dc3545; color: white; border: none; padding: 3px 6px; border-radius: 4px; font-size: 0.8em; cursor: pointer; }
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); }
-    .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-    .modal-content h3 { margin-top: 0; }
-    .modal input, .modal select { width: 100%; margin-bottom: 10px; padding: 8px; font-size: 16px; }
-    .modal .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .summary-box { background: #eef; padding: 8px; border-radius: 6px; margin-top: 10px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -30,26 +30,11 @@
   <label>終了日: <input id="endDate" type="date" /></label>
 </div>
 <div id="historyContainer"></div>
-<div class="modal" id="addModal">
-  <div class="modal-content">
-    <h3>半荘を追加</h3>
-    <div id="addForm"></div>
-    <button onclick="saveNewHanchan()">保存</button>
-    <button onclick="closeModal()">キャンセル</button>
-  </div>
-</div>
-<div class="modal" id="deleteModal">
-  <div class="modal-content">
-    <h3>削除確認</h3>
-    <p>この半荘を削除しますか？</p>
-    <button onclick="confirmDeleteGame()">削除</button>
-    <button onclick="closeDeleteModal()">キャンセル</button>
-  </div>
-</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
-  getFirestore, collection, getDocs, onSnapshot, doc, updateDoc, getDoc
+  getFirestore, collection, getDocs, doc, getDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -63,151 +48,71 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const sessionsRef = collection(db, "sessions");
 const playersRef = collection(db, "players");
+const sessionsRef = collection(db, "sessions");
 
 let playerMap = {};
-let playerList = [];
-let targetSessionId = null;
-let targetGameIndex = null;
 
 async function loadPlayerMap() {
   const snap = await getDocs(playersRef);
   snap.forEach(doc => {
     const data = doc.data();
     playerMap[data.id] = data.name;
-    playerList.push(data);
   });
 }
 
-function openModal(sessionId) {
-  const form = document.getElementById("addForm");
-  form.innerHTML = "";
-  for (let i = 0; i < 4; i++) {
-    const row = document.createElement("div");
-    row.className = "player-row";
-
-    const select = document.createElement("select");
-    playerList.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = p.name;
-      select.appendChild(opt);
+function summarizePoints(games) {
+  const totals = {};
+  games.forEach(game => {
+    game.players.forEach(p => {
+      if (!totals[p.id]) totals[p.id] = 0;
+      totals[p.id] += p.point;
     });
-
-    const input = document.createElement("input");
-    input.type = "number";
-    input.placeholder = "ポイント";
-
-    row.appendChild(select);
-    row.appendChild(input);
-    form.appendChild(row);
-  }
-  document.getElementById("addModal").style.display = "block";
-  targetSessionId = sessionId;
-}
-
-function closeModal() {
-  document.getElementById("addModal").style.display = "none";
-}
-
-function saveNewHanchan() {
-  const rows = document.querySelectorAll("#addForm .player-row");
-  const players = Array.from(rows).map(row => {
-    const point = parseFloat(row.querySelector("input").value);
-    return {
-      id: row.querySelector("select").value,
-      point: isNaN(point) ? NaN : point
-    };
   });
-  if (players.some(p => isNaN(p.point))) {
-    alert("すべてのプレイヤーの点数を入力してください");
-    return;
-  }
-  const sum = players.reduce((a, b) => a + b.point, 0);
-  if (Math.abs(sum) > 0.01) {
-    alert("合計が±0ではありません");
-    return;
-  }
-  const sessionDoc = doc(db, "sessions", targetSessionId);
-  getDoc(sessionDoc).then(snap => {
-    const data = snap.data();
-    const newGames = data.games.concat([{ date: new Date().toISOString().slice(0,10), players }]);
-    updateDoc(sessionDoc, { games: newGames });
-    closeModal();
-  });
+  return Object.entries(totals).map(([id, pt]) => `${playerMap[id] || id}: ${pt >= 0 ? '+' : ''}${pt.toFixed(1)}pt`).join('<br>');
 }
 
-function openDeleteModal(sessionId, gameIndex) {
-  targetSessionId = sessionId;
-  targetGameIndex = gameIndex;
-  document.getElementById("deleteModal").style.display = "block";
-}
-
-function closeDeleteModal() {
-  document.getElementById("deleteModal").style.display = "none";
-}
-
-function confirmDeleteGame() {
-  const sessionDoc = doc(db, "sessions", targetSessionId);
-  getDoc(sessionDoc).then(snap => {
-    const data = snap.data();
-    data.games.splice(targetGameIndex, 1);
-    updateDoc(sessionDoc, { games: data.games });
-    closeDeleteModal();
-  });
-}
-
-function displaySessions(sessions) {
+function renderSessions(sessions) {
   const container = document.getElementById("historyContainer");
   container.innerHTML = "";
-  const start = document.getElementById("startDate").value;
-  const end = document.getElementById("endDate").value;
-  const filtered = sessions.filter(s => (!start || s.title >= start) && (!end || s.title <= end));
-  filtered.sort((a, b) => b.title.localeCompare(a.title));
-
-  filtered.forEach(session => {
+  sessions.forEach(session => {
     const div = document.createElement("div");
     div.className = "session";
-
-    const sessionPoints = {};
-    session.games.forEach(g => {
-      g.players.forEach(p => {
-        if (!sessionPoints[p.id]) sessionPoints[p.id] = 0;
-        sessionPoints[p.id] += p.point;
-      });
-    });
-
-    const summaryHTML = `<div style="margin-top:10px; background:#eef; border-radius:6px; padding:8px;">
-      <strong>合計ポイント</strong><br>
-      ${Object.entries(sessionPoints).map(([id, pt]) => `${playerMap[id] || id}: ${pt >= 0 ? '+' : ''}${pt.toFixed(1)}pt`).join('<br>')}
-    </div>`;
-
-    const gamesHTML = session.games.map((g, i) => `
-      <div class="game">
-        <div class="text">${g.date}：${g.players.map(p => `${playerMap[p.id] || p.id}(${p.point})`).join("、")}</div>
-        <button class="delete-game-btn" onclick="openDeleteModal('${session.id}', ${i})">🗑</button>
-      </div>`).join("");
-
+    const summary = summarizePoints(session.games);
+    const gamesHTML = session.games.map(game => {
+      const detail = game.players.map(p => `${playerMap[p.id] || p.id}(${p.point})`).join("、");
+      return `<div class="game"><div class="text">${game.date}：${detail}</div></div>`;
+    }).join("");
     div.innerHTML = `
       <div class="session-header">
         <h3>${session.title}</h3>
-        <button class="edit-button" onclick="openModal('${session.id}')">半荘を追加</button>
       </div>
       ${gamesHTML}
-      ${summaryHTML}`;
-
+      <div class="summary-box">${summary}</div>
+    `;
     container.appendChild(div);
   });
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadPlayerMap();
-  onSnapshot(sessionsRef, snap => {
-    const sessions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    displaySessions(sessions);
+function filterSessions(sessions) {
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
+  return sessions.filter(s => {
+    return (!start || s.title >= start) && (!end || s.title <= end);
   });
-});
+}
+
+async function loadAndDisplay() {
+  await loadPlayerMap();
+  const snap = await getDocs(sessionsRef);
+  const sessions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  renderSessions(filterSessions(sessions));
+}
+
+document.getElementById("startDate").addEventListener("change", loadAndDisplay);
+document.getElementById("endDate").addEventListener("change", loadAndDisplay);
+
+loadAndDisplay();
 </script>
 </body>
 </html>
