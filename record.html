@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -27,40 +28,6 @@
   .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
   .player-row select, .player-row input { flex: 1; }
   .top-nav { text-align: center; margin-bottom: 20px; }
-  .history-item {
-    background: #f8f9fa; padding: 10px;
-    margin: 10px 0; border-radius: 5px;
-    position: relative;
-  }
-  .action-buttons {
-    position: absolute; top: 10px; right: 10px;
-    display: flex; gap: 8px;
-  }
-  .edit-button, .delete-button {
-    padding: 5px 10px; font-size: 14px;
-    border: none; border-radius: 5px;
-    cursor: pointer;
-  }
-  .edit-button { background: #ffc107; color: black; }
-  .delete-button { background: #dc3545; color: white; }
-  .sum-warning {
-    font-weight: bold; margin: 10px 0; text-align: center;
-  }
-  .positive { color: blue; }
-  .negative { color: red; }
-  .score-input { text-align: right; }
-  .modal {
-    display: none; position: fixed; z-index: 1000;
-    left: 0; top: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
-  }
-  .modal-content {
-    background-color: white; margin: 10% auto; padding: 20px;
-    border-radius: 10px; width: 90%; max-width: 400px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  }
-  .modal-content h3 { margin-top: 0; }
-  .modal input { width: 100%; margin-bottom: 10px; padding: 8px; font-size: 16px; }
   .history-section table {
     width: 100%; border-collapse: collapse; margin-top: 10px;
   }
@@ -77,6 +44,12 @@
   }
   .rate-input-wrapper { display: flex; align-items: center; gap: 8px; }
   .rate-input-wrapper input { width: 100px; }
+  .sum-warning {
+    font-weight: bold; margin: 10px 0; text-align: center;
+  }
+  .positive { color: blue; }
+  .negative { color: red; }
+  .score-input { text-align: right; }
 </style>
 </head>
 <body>
@@ -102,23 +75,21 @@
   <h2>この回の対局履歴</h2>
   <div id="sessionHistory">履歴はまだありません。</div>
 </div>
-<!-- 編集モーダル -->
-<div class="modal" id="editModal">
-  <div class="modal-content">
-    <h3>半荘の編集</h3>
-    <form id="editForm"></form>
-    <button class="main-button" onclick="saveEdit()">保存</button>
-    <button class="main-button" onclick="closeModal()" style="background:#6c757d;">キャンセル</button>
-  </div>
-</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, updateDoc,
-  getDocs, doc, getDoc
+  getFirestore, collection, addDoc, updateDoc, getDocs, doc, getDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-const firebaseConfig = { apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI", authDomain: "mahjong-app-2e2e9.firebaseapp.com", projectId: "mahjong-app-2e2e9", storageBucket: "mahjong-app-2e2e9.appspot.com", messagingSenderId: "440425002404", appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31" };
+const firebaseConfig = {
+  apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+  authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+  projectId: "mahjong-app-2e2e9",
+  storageBucket: "mahjong-app-2e2e9.appspot.com",
+  messagingSenderId: "440425002404",
+  appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+};
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -247,6 +218,8 @@ async function saveRecord() {
 
   alert("対局を保存しました！");
   renderSessionHistory(updatedGames);
+
+  document.querySelectorAll(".player-row select").forEach(select => select.selectedIndex = 0);
   document.querySelectorAll(".player-row input").forEach(input => {
     input.value = "";
     updateInputColor(input);
@@ -255,13 +228,63 @@ async function saveRecord() {
   saveInputValues();
 }
 
-window.startNewSession = startNewSession;
-window.saveRecord = saveRecord;
+function renderSessionHistory(games) {
+  const container = document.getElementById("sessionHistory");
+  if (!games || games.length === 0) {
+    container.innerHTML = "履歴はまだありません。";
+    return;
+  }
+
+  const allIds = [...new Set(games.flatMap(g => g.players.map(p => p.id)))];
+  const idToName = Object.fromEntries(playerList.map(p => [p.id, p.name]));
+  let html = '<table><tr><th>日付</th>' + allIds.map(id => `<th>${idToName[id] || id}</th>`).join("") + '</tr>';
+
+  const totals = Object.fromEntries(allIds.map(id => [id, 0]));
+
+  games.forEach(game => {
+    html += `<tr><td>${game.date}</td>`;
+    allIds.forEach(id => {
+      const player = game.players.find(p => p.id === id);
+      const val = player ? player.point : "";
+      if (player) totals[id] += player.point;
+      const color = player ? (player.point < 0 ? 'red' : 'blue') : '';
+      html += `<td style="color:${color}">${val}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += `<tr style="font-weight:bold;"><td>合計</td>` +
+    allIds.map(id => {
+      const val = totals[id].toFixed(1);
+      const color = totals[id] < 0 ? 'red' : 'blue';
+      return `<td style="color:${color}">${val}</td>`;
+    }).join("") + '</tr>';
+
+  const rate = parseFloat(document.getElementById("rateInput")?.value || 0);
+  html += `<tr class="money-row"><td>換算</td>` +
+    allIds.map(id => {
+      const coin = Math.round(totals[id] * rate);
+      const color = coin < 0 ? 'red' : 'blue';
+      return `<td style="color:${color}">${coin} コイン</td>`;
+    }).join("") + '</tr>';
+
+  html += '</table>';
+  container.innerHTML = html;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const today = new Date();
   document.getElementById('gameDate').value = today.toISOString().split('T')[0];
   await loadPlayers();
+  if (currentSessionId) {
+    const sessionDoc = doc(db, "sessions", currentSessionId);
+    const snap = await getDoc(sessionDoc);
+    if (snap.exists()) renderSessionHistory(snap.data().games);
+  }
 });
+
+window.startNewSession = startNewSession;
+window.saveRecord = saveRecord;
 </script>
 </body>
 </html>
