@@ -85,67 +85,73 @@
 <ul class="ranking-list" id="rankingList"></ul>
 </div>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import {
-  getFirestore, collection, getDocs
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  // —— Firebase 初期化 ——
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-  authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-  projectId: "mahjong-app-2e2e9",
-  storageBucket: "mahjong-app-2e2e9.appspot.com",
-  messagingSenderId: "440425002404",
-  appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+    authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+    projectId: "mahjong-app-2e2e9",
+    storageBucket: "mahjong-app-2e2e9.appspot.com",
+    messagingSenderId: "440425002404",
+    appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+  };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const sessionsRef = collection(db, "sessions");
-const playersRef = collection(db, "players");
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const playersRef  = collection(db, "players");
+  const sessionsRef = collection(db, "sessions");
 
-const playerMap = {};
+  // 匿名認証 → 認証後にマップ読み込みとランキング計算
+  signInAnonymously(auth)
+    .then(async () => {
+      console.log("🔑 匿名ログイン成功");
+      await loadPlayerMap();
+      calculateRanking();
+    })
+    .catch(err => console.error("⚠️ 認証失敗:", err.message));
 
-async function loadPlayerMap() {
-  const snap = await getDocs(playersRef);
-  snap.forEach(doc => {
-    const data = doc.data();
-    playerMap[data.id] = data.name;
+  onAuthStateChanged(auth, user => {
+    if (user) console.log("👤 ログインユーザー:", user.uid);
   });
-}
 
-async function calculateRanking() {
-  await loadPlayerMap();
+  // プレイヤーマップ読み込み
+  const playerMap = {};
+  async function loadPlayerMap() {
+    const snap = await getDocs(playersRef);
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      playerMap[d.id] = d.name;
+    });
+  }
 
-  const snap = await getDocs(sessionsRef);
-  const sessions = snap.docs.map(doc => doc.data());
-
-  const totals = {};
-
-  sessions.forEach(session => {
-    session.games.forEach(game => {
-      game.players.forEach(p => {
-        if (!totals[p.id]) totals[p.id] = 0;
-        totals[p.id] += p.point;
+  // ランキング計算と描画
+  async function calculateRanking() {
+    const snap = await getDocs(sessionsRef);
+    const totals = {};
+    snap.docs.forEach(docSnap => {
+      const session = docSnap.data();
+      session.games.forEach(game => {
+        game.players.forEach(p => {
+          totals[p.id] = (totals[p.id] || 0) + p.point;
+        });
       });
     });
-  });
-
-  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
-
-  const list = document.getElementById("rankingList");
-  list.innerHTML = "";
-  sorted.forEach(([id, point], i) => {
-    const li = document.createElement("li");
-    li.textContent = `${i + 1}位: ${playerMap[id] || id}（${point >= 0 ? "+" : ""}${point.toFixed(1)}pt）`;
-    if (i === 0) li.classList.add("gold");
-     else if (i === 1) li.classList.add("silver");
-     else if (i === 2) li.classList.add("bronze");
-    list.appendChild(li);
-  });
-}
-
-document.addEventListener("DOMContentLoaded", calculateRanking);
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    const list = document.getElementById("rankingList");
+    list.innerHTML = "";
+    sorted.forEach(([id, pt], i) => {
+      const li = document.createElement("li");
+      li.textContent = `${i+1}位: ${playerMap[id] || id} (${pt>=0?"+" : ""}${pt.toFixed(1)}pt)`;
+      if (i === 0)      li.classList.add("gold");
+      else if (i === 1) li.classList.add("silver");
+      else if (i === 2) li.classList.add("bronze");
+      list.appendChild(li);
+    });
+  }
 </script>
 </body>
 </html>

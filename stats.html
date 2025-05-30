@@ -130,275 +130,230 @@
 </div>
 <div id="playerDetail"></div>
 <script type="module">
-import { collection as col2, getDocs as getDocs2 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-const playersMap = {};
-async function loadPlayerNames() {
-  const snap = await getDocs2(col2(db, "players"));
-  snap.forEach(doc => {
-    const data = doc.data();
-    playersMap[data.id] = data.name;
+  // —— Firebase 初期化 —— 
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import {
+    getAuth,
+    signInAnonymously,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    getDocs,
+    onSnapshot
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import Chart from "https://cdn.jsdelivr.net/npm/chart.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+    authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+    projectId: "mahjong-app-2e2e9",
+    storageBucket: "mahjong-app-2e2e9.appspot.com",
+    messagingSenderId: "440425002404",
+    appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // 匿名認証 → 認証完了後だけ Firestore 操作を開始
+  signInAnonymously(auth)
+    .then(() => console.log("🔑 匿名ログイン成功"))
+    .catch(err => console.error("⚠️ ログイン失敗:", err.message));
+
+  onAuthStateChanged(auth, user => {
+    if (user) console.log("👤 ログインユーザー:", user.uid);
+    else     console.log("🚪 ログアウト中");
   });
-}
 
+  // プレイヤー名マップ読み込み
+  const playersMap = {};
+  async function loadPlayerNames() {
+    const snap = await getDocs(collection(db, "players"));
+    snap.forEach(doc => {
+      const d = doc.data();
+      playersMap[d.id] = d.name;
+    });
+  }
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  // 全セッションデータを保持
+  let allSessions = [];
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-  authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-  projectId: "mahjong-app-2e2e9",
-  storageBucket: "mahjong-app-2e2e9.appspot.com",
-  messagingSenderId: "440425002404",
-  appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
-  measurementId: "G-NP9EELBD7R"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-let allSessions = [];
-
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadPlayerNames();
-  document.getElementById("startDate").addEventListener("change", filterAndCalculate);
-  document.getElementById("endDate").addEventListener("change", filterAndCalculate);
-  onSnapshot(collection(db, "sessions"), snapshot => {
-    allSessions = [];
-    snapshot.forEach(doc => allSessions.push(doc.data()));
-    filterAndCalculate();
+  // DOM 準備完了後に読み込み → フィルタ → 描画
+  document.addEventListener("DOMContentLoaded", async () => {
+    await loadPlayerNames();
+    // 日付変更で再計算
+    document.getElementById("startDate").addEventListener("change", filterAndCalculate);
+    document.getElementById("endDate").addEventListener("change", filterAndCalculate);
+    // Firestore のライブ更新を監視
+    onSnapshot(collection(db, "sessions"), snapshot => {
+      allSessions = [];
+      snapshot.forEach(doc => allSessions.push(doc.data()));
+      filterAndCalculate();
+    });
   });
-});
 
-function filterAndCalculate() {
-  const start = document.getElementById("startDate").value;
-  const end = document.getElementById("endDate").value;
-  const filtered = allSessions.map(s => ({
-    ...s,
-    games: s.games.filter(g => (!start || g.date >= start) && (!end || g.date <= end))
-  })).filter(s => s.games.length > 0);
-  calculateStats(filtered);
-}
+  // フィルタ＆詳細統計計算呼び出し
+  function filterAndCalculate() {
+    const start = document.getElementById("startDate").value;
+    const end   = document.getElementById("endDate").value;
+    const filtered = allSessions
+      .map(s => ({
+        ...s,
+        games: s.games.filter(g => (!start || g.date >= start) && (!end || g.date <= end))
+      }))
+      .filter(s => s.games.length > 0);
+    calculateStats(filtered);
+  }
 
-window.playerData = {};
-
-function calculateStats(sessions) {
-  const playerData = {};
-  sessions.forEach(session => {
-    session.games.forEach(game => {
-      const sorted = [...game.players].sort((a, b) => b.point - a.point);
-      sorted.forEach((p, i) => {
-        if (!playerData[p.id]) {
-          playerData[p.id] = {
-          id: p.id,
-          name: playersMap[p.id] || p.id,
-            games: 0, tops: 0, seconds: 0, thirds: 0, fourths: 0,
-            totalRank: 0, totalPoint: 0, pointHistory: [], rankHistory: [], vs: {}, sessionHistory: []
-          };
-        }
-        const data = playerData[p.id];
-        data.games++;
-        if (i === 0) data.tops++;
-        else if (i === 1) data.seconds++;
-        else if (i === 2) data.thirds++;
-        else if (i === 3) data.fourths++;
-
-        data.totalRank += (i + 1);
-        data.totalPoint += Number(p.point.toFixed(1));
-        data.pointHistory.push(p.point);
-        data.rankHistory.push(i + 1);
-        game.players.forEach(op => {
-          if (op.id === p.id) return;
-          if (!data.vs[op.id]) {
-            data.vs[op.id] = { games: 0, pointDiff: 0, wins: 0 };
+  // 統計値計算＋テーブル／詳細描画
+  function calculateStats(sessions) {
+    // プレイヤーごとの集計オブジェクト
+    const playerData = {};
+    sessions.forEach(session => {
+      session.games.forEach(game => {
+        // 着順ソート
+        const sorted = [...game.players].sort((a, b) => b.point - a.point);
+        sorted.forEach((p, i) => {
+          if (!playerData[p.id]) {
+            playerData[p.id] = {
+              id: p.id,
+              name: playersMap[p.id] || p.id,
+              games: 0, tops: 0, seconds: 0, thirds: 0, fourths: 0,
+              totalRank: 0, totalPoint: 0,
+              pointHistory: [], rankHistory: [],
+              vs: {}, sessionHistory: [], sessionSums: []
+            };
           }
-          data.vs[op.id].games++;
-          data.vs[op.id].pointDiff += p.point - op.point;
-          if (p.point > op.point) data.vs[op.id].wins++;
+          const d = playerData[p.id];
+          d.games++;
+          if (i === 0)      d.tops++;
+          else if (i === 1) d.seconds++;
+          else if (i === 2) d.thirds++;
+          else if (i === 3) d.fourths++;
+          d.totalRank += i + 1;
+          d.totalPoint += p.point;
+          d.pointHistory.push(p.point);
+          d.rankHistory.push(i + 1);
+          // セッションごとの合計点
+          const sumThisSession = game.players.find(pl => pl.id === p.id).point;
+          d.sessionSums.push(sumThisSession);
+          d.sessionHistory.push({ title: session.title });
+          // 対戦相手別勝率
+          game.players.forEach(op => {
+            if (op.id !== p.id) {
+              d.vs[op.id] = (d.vs[op.id] || 0) + (p.point >= 0 ? 1 : 0);
+            }
+          });
         });
       });
     });
-    Object.keys(playerData).forEach(name => {
-      const found = session.games.some(game => game.players.find(p => p.id === name));
-      if (found) playerData[name].sessionHistory.push(session);
+
+    // テーブル描画（ヘッダー以外をクリアして再構築）
+    const table = document.getElementById("statsTable");
+    table.querySelectorAll("tr:not(:first-child)").forEach(tr => tr.remove());
+    Object.values(playerData).forEach(p => {
+      const avgPoint       = (p.totalPoint / p.games).toFixed(1);
+      const avgRank        = (p.totalRank  / p.games).toFixed(2);
+      const topRate        = ((p.tops / p.games) * 100).toFixed(1);
+      const avoidLastRate  = (((p.games - p.fourths) / p.games) * 100).toFixed(1);
+      const maxPoint       = Math.max(...p.pointHistory).toFixed(1);
+      const minPoint       = Math.min(...p.pointHistory).toFixed(1);
+      const maxIdx         = p.sessionSums.indexOf(Math.max(...p.sessionSums));
+      const minIdx         = p.sessionSums.indexOf(Math.min(...p.sessionSums));
+      const maxSession     = maxIdx !== -1
+        ? `${p.sessionSums[maxIdx].toFixed(1)} pt (${p.sessionHistory[maxIdx].title})`
+        : "-";
+      const minSession     = minIdx !== -1
+        ? `${p.sessionSums[minIdx].toFixed(1)} pt (${p.sessionHistory[minIdx].title})`
+        : "-";
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${p.name}</td>
+        <td>${p.games}</td>
+        <td>${p.totalPoint.toFixed(1)}</td>
+        <td>${avgPoint}</td>
+        <td>${avgRank}</td>
+        <td>${topRate}%</td>
+        <td>${avoidLastRate}%</td>
+        <td>${maxPoint}</td>
+        <td>${minPoint}</td>
+        <td>${maxSession}</td>
+        <td>${minSession}</td>
+      `;
+      table.appendChild(row);
     });
-  });
 
-  window.playerData = playerData;
+    // 詳細成績表示エリア更新
+    // （グラフ描画＆対戦相手選択ロジック）
+    const detailDiv = document.getElementById("playerDetail");
+    detailDiv.innerHTML = "";  // まずクリア
+    Object.values(playerData).forEach(p => {
+      const container = document.createElement("div");
+      container.className = "player-detail";
+      container.innerHTML = `
+        <h2>${p.name} の成績詳細</h2>
+        <p>
+          🀄 対局数：${p.games} 回<br>
+          🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>
+          📈 平均ポイント：${avgPoint} pt<br>
+          🧮 平均着順：${avgRank} 位<br>
+          👑 トップ率：${topRate}%<br>
+          🚫 ラス回避率：${avoidLastRate}%<br>
+          🔺 1半荘での最大獲得pt：${maxPoint} pt<br>
+          🔻 1半荘での最小獲得pt：${minPoint} pt<br>
+          📊 1日(1セット)での最高成績：${maxSession}<br>
+          📉 1日(1セット)での最低成績：${minSession}<br>
+        </p>
+        <canvas id="pointChart-${p.id}" height="150"></canvas>
+        <div class="opponent-section">
+          <label>対戦相手を選択：
+            <select id="opponentSelect-${p.id}">
+              <option value="">--選択してください--</option>
+            </select>
+          </label>
+        </div>
+      `;
+      detailDiv.appendChild(container);
 
-  const tbody = document.querySelector("#statsTable tbody");
-  tbody.innerHTML = "";
-  Object.values(playerData).forEach(p => {
-    const avgRank = (p.totalRank / p.games).toFixed(2);
-    const avgPoint = (p.totalPoint / p.games).toFixed(1);
-    const topRate = ((p.tops / p.games) * 100).toFixed(1) + "%";
-    const doubleRate = (((p.tops + p.seconds) / p.games) * 100).toFixed(1) + "%";
-    const avoidLastRate = (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1) + "%";
+      // 累積ポイント履歴チャート
+      const ctx = document.getElementById(`pointChart-${p.id}`).getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: p.rankHistory.map((_, i) => i+1),
+          datasets: [{
+            label: "累積ポイント",
+            data: p.sessionSums.reduce((acc, cur, i) => {
+              acc.push((i>0 ? acc[i-1] : 0) + cur);
+              return acc;
+            }, []),
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "対局数" } },
+            y: { title: { display: true, text: "累積ポイント" } }
+          }
+        }
+      });
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><span class="clickable-name" onclick="viewPlayerDetail('${p.id}')">${p.name}</span></td>
-      <td>${p.games}</td>
-      <td>${p.totalPoint >= 0 ? "+" : ""}${p.totalPoint.toFixed(1)}</td>
-      <td>${p.tops}</td>
-      <td>${p.seconds}</td>
-      <td>${p.thirds}</td>
-      <td>${p.fourths}</td>
-      <td>${topRate}</td>
-      <td>${doubleRate}</td>
-      <td>${avoidLastRate}</td>
-      <td>${avgRank}</td>
-      <td>${avgPoint}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  applyHighlighting();
-  const first = Object.keys(playerData)[0];
-  if (first) viewPlayerDetail(first);
-}
-
-function applyHighlighting() {
-  const table = document.getElementById('statsTable');
-  const rows = table.querySelectorAll('tbody tr');
-  const numCols = table.rows[0].cells.length;
-  for (let col = 1; col < numCols; col++) {
-    let max = -Infinity, min = Infinity;
-    rows.forEach(row => {
-      const val = parseFloat(row.cells[col].textContent);
-      if (!isNaN(val)) {
-        max = Math.max(max, val);
-        min = Math.min(min, val);
-      }
-    });
-    rows.forEach(row => {
-      const cell = row.cells[col];
-      const val = parseFloat(cell.textContent);
-      cell.classList.remove('highlight-max', 'highlight-min');
-      const headerText = table.rows[0].cells[col].textContent.trim();
-      if (headerText === '平均着順') {
-        if (val === min) cell.classList.add('highlight-max');
-        if (val === max) cell.classList.add('highlight-min');
-      } else {
-        if (val === max) cell.classList.add('highlight-max');
-        if (val === min) cell.classList.add('highlight-min');
-      }
+      // 対戦相手別勝率ドロップダウン
+      const sel = document.getElementById(`opponentSelect-${p.id}`);
+      Object.keys(p.vs).sort().forEach(oppId => {
+        const opt = document.createElement("option");
+        opt.value = oppId;
+        opt.textContent = `${playersMap[oppId]||oppId} (勝利:${p.vs[oppId]}回)`;
+        sel.appendChild(opt);
+      });
     });
   }
-}
-
-function calculateSessionSums(player) {
-  if (!player.sessionSums && player.sessionHistory) {
-    player.sessionSums = player.sessionHistory.map(session => {
-      return session.games
-        .map(game => {
-          const me = game.players.find(p => p.id === player.id);
-          return me ? me.point : 0;
-        })
-        .reduce((a, b) => a + b, 0);
-    });
-  }
-}
-
-window.viewPlayerDetail = function(name) {
-  const p = window.playerData[name];
-  if (!p) return;
-  if (!p) return;
-
-  const avgPoint = (p.totalPoint / p.games).toFixed(1);
-  const avgRank = (p.totalRank / p.games).toFixed(2);
-  const topRate = ((p.tops / p.games) * 100).toFixed(1);
-  const avoidLastRate = (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1);
-
-  const maxPoint = Math.max(...p.pointHistory).toFixed(1);
-  const minPoint = Math.min(...p.pointHistory).toFixed(1);
-
-  calculateSessionSums(p);
-  const maxIdx = p.sessionSums ? p.sessionSums.indexOf(Math.max(...p.sessionSums)) : -1;
-  const minIdx = p.sessionSums ? p.sessionSums.indexOf(Math.min(...p.sessionSums)) : -1;
-  
-  const maxSession = (p.sessionSums && maxIdx !== -1) ? 
-   `${p.sessionSums[maxIdx].toFixed(1)} pt (${p.sessionHistory[maxIdx].title})` : "-";
-  const minSession = (p.sessionSums && minIdx !== -1) ? 
-   `${p.sessionSums[minIdx].toFixed(1)} pt (${p.sessionHistory[minIdx].title})` : "-";
-
-
-  const opponents = Object.keys(p.vs).sort();
-  const detailDiv = document.getElementById("playerDetail");
-
-  detailDiv.innerHTML = `
-    <div class="player-detail">
-      <h2>${playersMap[p.id] || p.id} の成績詳細</h2>
-      <p>
-        🀄 対局数：${p.games} 回<br>
-        🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>
-        📈 平均ポイント：${avgPoint} pt<br>
-        🧮 平均着順：${avgRank} 位<br>
-        👑 トップ率：${topRate}%<br>
-        🚫 ラス回避率：${avoidLastRate}%<br>
-        🔺 1半荘での最大獲得pt：${maxPoint} pt<br>
-        🔻 1半荘での最小獲得pt：${minPoint} pt<br>
-        📊 1日(1セット)での最高成績：${maxSession} pt<br>
-        📉 1日(1セット)での最低成績：${minSession} pt<br>
-      </p>
-      <canvas id="pointChart"></canvas>
-      <div class="opponent-section">
-        <label>対戦相手を選択：
-          <select id="opponentSelect">
-            <option value="">--選択してください--</option>
-            ${opponents.map(opId => `<option value="${opId}">${playersMap[opId] || opId}</option>`).join('')}
-          </select>
-        </label>
-        <div id="opponentStats"></div>
-      </div>
-    </div>
-  `;
-
-  drawPointGraph(p);
-
-  document.getElementById("opponentSelect").addEventListener("change", e => {
-    const opName = e.target.value;
-    const vs = p.vs[opName];
-    const statsDiv = document.getElementById("opponentStats");
-    if (!opName || !vs) {
-      statsDiv.innerHTML = "";
-      return;
-    }
-    const avgDiff = (vs.pointDiff / vs.games).toFixed(1);
-    const winRate = ((vs.wins / vs.games) * 100).toFixed(1);
-    statsDiv.innerHTML = `
-      <p>
-        📊 ${playersMap[p.id] || p.id} vs ${opName}<br>
-        🔁 同卓回数：${vs.games} 回<br>
-        🥇 勝利回数：${vs.wins} 回 (${winRate}%)<br>
-        ⚖️ 平均点差：${avgDiff} pt
-      </p>
-    `;
-  });
-};
-
-function drawPointGraph(p) {
-  const pointData = p.pointHistory.map(v => Number(v.toFixed(1)));
-  const ctx = document.getElementById("pointChart").getContext("2d");
-  new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: pointData.map((_, i) => i + 1),
-      datasets: [{
-        label: "累積ポイント推移",
-        data: pointData,
-        borderColor: "blue",
-        fill: false
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: "対局数" } },
-        y: { title: { display: true, text: "累積ポイント" } }
-      }
-    }
-  });
-}
 </script>
+
 </body>
 </html>

@@ -68,148 +68,208 @@
   </div>
 </div>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import {
-  getFirestore, collection, getDocs, doc, updateDoc, getDoc
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  // —— Firebase 初期化 ——  
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import {
+    getAuth,
+    signInAnonymously,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore,
+    collection,
+    getDocs,
+    doc,
+    updateDoc,
+    getDoc
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-const firebaseConfig = { apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI", authDomain: "mahjong-app-2e2e9.firebaseapp.com", projectId: "mahjong-app-2e2e9", storageBucket: "mahjong-app-2e2e9.appspot.com", messagingSenderId: "440425002404", appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31" };
+  const firebaseConfig = {
+    apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+    authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+    projectId: "mahjong-app-2e2e9",
+    storageBucket: "mahjong-app-2e2e9.appspot.com",
+    messagingSenderId: "440425002404",
+    appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+  };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const playersRef = collection(db, "players");
-const sessionsRef = collection(db, "sessions");
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const playersRef  = collection(db, "players");
+  const sessionsRef = collection(db, "sessions");
 
-let playerMap = {};
-let playerList = [];
-let currentSessionId = null;
+  // 匿名認証 → 認証完了後にのみ Firestore 操作を起動
+  signInAnonymously(auth)
+    .then(() => console.log("🔑 匿名ログイン成功"))
+    .catch(error => console.error("⚠️ 認証失敗:", error.message));
 
-async function loadPlayerMap() {
-  const snap = await getDocs(playersRef);
-  snap.forEach(doc => {
-    const data = doc.data();
-    playerMap[data.id] = data.name;
-    playerList.push(data);
+  onAuthStateChanged(auth, user => {
+    if (user) console.log("👤 ログインユーザー:", user.uid);
+    else     console.log("🚪 ログアウト中");
   });
-}
 
-function openAddModal(sessionId) {
-  currentSessionId = sessionId;
-  const form = document.getElementById("addForm");
-  form.innerHTML = "";
-  for (let i = 0; i < 4; i++) {
-    const row = document.createElement("div");
-    row.className = "player-row";
-
-    const select = document.createElement("select");
-    playerList.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = p.name;
-      select.appendChild(opt);
+  // プレイヤーマップ読み込み
+  let playerMap = {};
+  let playerList = [];
+  async function loadPlayerMap() {
+    playerMap = {};
+    playerList = [];
+    const snap = await getDocs(playersRef);
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      playerMap[data.id] = data.name;
+      playerList.push(data);
     });
-
-    const input = document.createElement("input");
-    input.type = "number";
-    input.placeholder = "ポイント";
-
-    row.appendChild(select);
-    row.appendChild(input);
-    form.appendChild(row);
   }
-  document.getElementById("addModal").style.display = "block";
-}
 
-function closeModal() {
-  document.getElementById("addModal").style.display = "none";
-}
+  // 半荘追加モーダルを開く
+  let currentSessionId = null;
+  function openAddModal(sessionId) {
+    currentSessionId = sessionId;
+    const form = document.getElementById("addForm");
+    form.innerHTML = "";
+    for (let i = 0; i < 4; i++) {
+      const row = document.createElement("div");
+      row.className = "player-row";
 
-function summarizePoints(games) {
-  const totals = {};
-  games.forEach(game => {
-    game.players.forEach(p => {
-      if (!totals[p.id]) totals[p.id] = 0;
-      totals[p.id] += p.point;
+      const select = document.createElement("select");
+      playerList.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      });
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.placeholder = "ポイント";
+
+      row.appendChild(select);
+      row.appendChild(input);
+      form.appendChild(row);
+    }
+    document.getElementById("addModal").style.display = "block";
+  }
+
+  // モーダルを閉じる
+  function closeModal() {
+    document.getElementById("addModal").style.display = "none";
+  }
+
+  // 各セッションの合計ポイントサマリを生成
+  function summarizePoints(games) {
+    const totals = {};
+    games.forEach(game => {
+      game.players.forEach(p => {
+        totals[p.id] = (totals[p.id] || 0) + p.point;
+      });
     });
-  });
-  return Object.entries(totals).map(([id, pt]) => `${playerMap[id] || id}: ${pt >= 0 ? '+' : ''}${pt.toFixed(1)}pt`).join('<br>');
-}
+    return Object.entries(totals)
+      .map(([id, pt]) => `${playerMap[id] || id}: ${pt >= 0 ? "+" : ""}${pt.toFixed(1)}pt`)
+      .join("<br>");
+  }
 
-function renderSessions(sessions) {
-  const container = document.getElementById("historyContainer");
-  container.innerHTML = "";
-  sessions.forEach(session => {
-    const div = document.createElement("div");
-    div.className = "session";
-    const summary = summarizePoints(session.games);
-    const gamesHTML = session.games.map((game, i) => {
-      const detail = game.players.map(p => `${playerMap[p.id] || p.id}(${p.point})`).join("、");
-      return `<div class="game"><div class="text">${game.date}：${detail}</div><button class="delete-game-btn" onclick="deleteGame('${session.id}', ${i})">🗑</button></div>`;
-    }).join("");
-    div.innerHTML = `
-      <div class="session-header">
-        <h3>${session.title}</h3>
-        <button class="edit-button" onclick="openAddModal('${session.id}')">半荘追加</button>
-      </div>
-      ${gamesHTML}
-      <div class="summary-box">${summary}</div>
-    `;
-    container.appendChild(div);
-  });
-}
+  // セッション一覧を描画
+  function renderSessions(sessions) {
+    const container = document.getElementById("historyContainer");
+    container.innerHTML = "";
+    sessions.forEach(session => {
+      const div = document.createElement("div");
+      div.className = "session";
 
-function filterSessions(sessions) {
-  const start = document.getElementById("startDate").value;
-  const end = document.getElementById("endDate").value;
-  return sessions.filter(s => (!start || s.title >= start) && (!end || s.title <= end));
-}
+      const summary = summarizePoints(session.games);
+      const gamesHTML = session.games.map((game, i) => {
+        const detail = game.players
+          .map(p => `${playerMap[p.id] || p.id}(${p.point})`)
+          .join(" / ");
+        return `
+          <div class="game">
+            <div class="text">${game.date}：${detail}</div>
+            <button class="delete-game-btn" onclick="deleteGame('${session.id}', ${i})">🗑</button>
+          </div>`;
+      }).join("");
 
-async function saveNewHanchan() {
-  const rows = document.querySelectorAll("#addForm .player-row");
-  const players = Array.from(rows).map(row => {
-    const id = row.querySelector("select").value;
-    const point = parseFloat(row.querySelector("input").value);
-    return { id, point };
-  });
-  if (players.some(p => isNaN(p.point))) return alert("すべての点数を入力してください");
-  const sum = players.reduce((a, b) => a + b.point, 0);
-  if (Math.abs(sum) > 0.01) return alert("合計点が±0ではありません");
+      div.innerHTML = `
+        <div class="session-header">
+          <h3>${session.title}</h3>
+          <button class="edit-button" onclick="openAddModal('${session.id}')">半荘追加</button>
+        </div>
+        ${gamesHTML}
+        <div class="summary-box">${summary}</div>
+      `;
+      container.appendChild(div);
+    });
+  }
 
-  const sessionRef = doc(db, "sessions", currentSessionId);
-  const snap = await getDoc(sessionRef);
-  const data = snap.data();
-  const newGame = { date: new Date().toISOString().split("T")[0], players };
-  const newGames = data.games.concat(newGame);
-  await updateDoc(sessionRef, { games: newGames });
-  closeModal();
+  // 日付フィルタ適用
+  function filterSessions(sessions) {
+    const start = document.getElementById("startDate").value;
+    const end   = document.getElementById("endDate").value;
+    return sessions.filter(s =>
+      (!start || s.title >= start) &&
+      (!end   || s.title <= end)
+    );
+  }
+
+  // 新しい半荘を保存
+  async function saveNewHanchan() {
+    const rows = document.querySelectorAll("#addForm .player-row");
+    const players = Array.from(rows).map(row => {
+      const id    = row.querySelector("select").value;
+      const point = parseFloat(row.querySelector("input").value);
+      return { id, point };
+    });
+    if (players.some(p => isNaN(p.point))) {
+      alert("すべての点数を入力してください");
+      return;
+    }
+    const sum = players.reduce((a, b) => a + b.point, 0);
+    if (Math.abs(sum) > 0.01) {
+      alert("合計点が±0ではありません");
+      return;
+    }
+
+    const sessionRef = doc(db, "sessions", currentSessionId);
+    const snap       = await getDoc(sessionRef);
+    const data       = snap.data();
+    const newGame    = { date: new Date().toISOString().split("T")[0], players };
+    const newGames   = data.games.concat(newGame);
+
+    await updateDoc(sessionRef, { games: newGames });
+    closeModal();
+    loadAndDisplay();
+  }
+
+  // 半荘を削除
+  async function deleteGame(sessionId, gameIndex) {
+    if (!confirm("この半荘を削除しますか？")) return;
+    const sessionRef = doc(db, "sessions", sessionId);
+    const snap       = await getDoc(sessionRef);
+    const data       = snap.data();
+    data.games.splice(gameIndex, 1);
+    await updateDoc(sessionRef, { games: data.games });
+    loadAndDisplay();
+  }
+
+  // プレイヤーマップ読み込み → セッション取得 → 描画
+  async function loadAndDisplay() {
+    await loadPlayerMap();
+    const snap     = await getDocs(sessionsRef);
+    const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderSessions(filterSessions(sessions));
+  }
+
+  // イベント登録と初回表示
+  document.getElementById("startDate").addEventListener("change", loadAndDisplay);
+  document.getElementById("endDate").addEventListener("change", loadAndDisplay);
   loadAndDisplay();
-}
 
-async function deleteGame(sessionId, gameIndex) {
-  if (!confirm("この半荘を削除しますか？")) return;
-  const sessionRef = doc(db, "sessions", sessionId);
-  const snap = await getDoc(sessionRef);
-  const data = snap.data();
-  data.games.splice(gameIndex, 1);
-  await updateDoc(sessionRef, { games: data.games });
-  loadAndDisplay();
-}
-
-async function loadAndDisplay() {
-  await loadPlayerMap();
-  const snap = await getDocs(sessionsRef);
-  const sessions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  renderSessions(filterSessions(sessions));
-}
-
-document.getElementById("startDate").addEventListener("change", loadAndDisplay);
-document.getElementById("endDate").addEventListener("change", loadAndDisplay);
-loadAndDisplay();
-
-window.openAddModal = openAddModal;
-window.deleteGame = deleteGame;
-window.saveNewHanchan = saveNewHanchan;
-window.closeModal = closeModal;
+  // グローバル公開
+  window.openAddModal   = openAddModal;
+  window.deleteGame     = deleteGame;
+  window.saveNewHanchan = saveNewHanchan;
+  window.closeModal     = closeModal;
 </script>
 </body>
 </html>
