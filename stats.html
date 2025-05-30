@@ -130,19 +130,11 @@
 </div>
 <div id="playerDetail"></div>
 <script type="module">
-  // —— Firebase 初期化 —— 
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import {
-    getAuth,
-    signInAnonymously,
-    onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import {
-    getFirestore,
-    collection,
-    getDocs,
-    onSnapshot
-  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, collection, getDocs, onSnapshot }
+    from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
   import Chart from "https://cdn.jsdelivr.net/npm/chart.js";
 
   const firebaseConfig = {
@@ -154,21 +146,12 @@
     appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
   };
 
-  const app = initializeApp(firebaseConfig);
+  const app  = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getFirestore(app);
+  const sessionsCol = collection(db, "sessions");
 
-  // 匿名認証 → 認証完了後だけ Firestore 操作を開始
-  signInAnonymously(auth)
-    .then(() => console.log("🔑 匿名ログイン成功"))
-    .catch(err => console.error("⚠️ ログイン失敗:", err.message));
-
-  onAuthStateChanged(auth, user => {
-    if (user) console.log("👤 ログインユーザー:", user.uid);
-    else     console.log("🚪 ログアウト中");
-  });
-
-  // プレイヤー名マップ読み込み
+  // プレイヤーマップ用
   const playersMap = {};
   async function loadPlayerNames() {
     const snap = await getDocs(collection(db, "players"));
@@ -178,31 +161,39 @@
     });
   }
 
-  // 全セッションデータを保持
+  // 全セッションキャッシュ
   let allSessions = [];
 
-  // DOM 準備完了後に読み込み → フィルタ → 描画
-  document.addEventListener("DOMContentLoaded", async () => {
-    await loadPlayerNames();
-    // 日付変更で再計算
-    document.getElementById("startDate").addEventListener("change", filterAndCalculate);
-    document.getElementById("endDate").addEventListener("change", filterAndCalculate);
-    // Firestore のライブ更新を監視
-    onSnapshot(collection(db, "sessions"), snapshot => {
-      allSessions = [];
-      snapshot.forEach(doc => allSessions.push(doc.data()));
-      filterAndCalculate();
-    });
-  });
+  // 認証してから一連のセットアップを行う
+  signInAnonymously(auth)
+    .then(async () => {
+      console.log("🔑 匿名ログイン成功");
 
-  // フィルタ＆詳細統計計算呼び出し
+      // 1) プレイヤーマップ読み込み
+      await loadPlayerNames();
+
+      // 2) 日付フィルタのイベント登録
+      document.getElementById("startDate").addEventListener("change", filterAndCalculate);
+      document.getElementById("endDate").addEventListener("change", filterAndCalculate);
+
+      // 3) Firestore のライブ更新監視
+      onSnapshot(sessionsCol, snapshot => {
+        allSessions = [];
+        snapshot.forEach(doc => allSessions.push(doc.data()));
+        filterAndCalculate();
+      });
+    })
+    .catch(err => console.error("⚠️ ログイン失敗:", err.message));
+
+  // 日付フィルタ＋再描画
   function filterAndCalculate() {
     const start = document.getElementById("startDate").value;
     const end   = document.getElementById("endDate").value;
     const filtered = allSessions
       .map(s => ({
         ...s,
-        games: s.games.filter(g => (!start || g.date >= start) && (!end || g.date <= end))
+        games: s.games.filter(g => (!start || g.date >= start)
+                                && (!end   || g.date <= end))
       }))
       .filter(s => s.games.length > 0);
     calculateStats(filtered);
