@@ -5,16 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>対戦履歴</title>
   <style>
-    /* ─── ベーススタイル ─── */
+    /* ─── 基本レイアウト ─── */
     body { font-family: sans-serif; background-color: #f0f0f0; padding: 20px; }
-    h1  { text-align: center; margin-bottom: 10px; }
+    h1 { text-align: center; margin-bottom: 10px; }
 
-    /* ─── ナビゲーション・フィルター ─── */
+    /* ─── ナビゲーション & フィルター ─── */
     .top-nav { text-align: center; margin-bottom: 20px; }
     .main-button {
-      background: #007bff; color: white;
-      padding: 10px 20px; border: none; border-radius: 8px;
-      font-size: 16px; cursor: pointer;
+      background: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
     }
     .main-button:hover { background-color: #0056b3; }
 
@@ -23,70 +27,92 @@
 
     /* ─── セッションカード ─── */
     .session {
-      background: #ffffff; border-radius: 10px;
+      background: #ffffff;
+      border-radius: 10px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      padding: 15px; margin-bottom: 20px;
+      padding: 15px;
+      margin-bottom: 20px;
     }
     .session-header {
-      display: flex; justify-content: space-between;
-      align-items: center; margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
     }
     .edit-button, .action-panel button {
-      margin-left: 8px; padding: 5px 10px;
-      border: none; border-radius: 6px;
-      background: #007bff; color: white;
+      margin-left: 8px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
       cursor: pointer;
     }
     .edit-button:hover, .action-panel button:hover { background: #0056b3; }
 
     .game {
-      background: #f8f8f8; border-radius: 5px;
-      padding: 8px; margin: 5px 0;
-      display: flex; justify-content: space-between;
+      background: #f8f8f8;
+      border-radius: 5px;
+      padding: 8px;
+      margin: 5px 0;
+      display: flex;
+      justify-content: space-between;
     }
     .game .text { flex-grow: 1; }
     .game .delete-game-btn {
       margin-left: 10px;
-      background: #dc3545; color: white;
-      border: none; padding: 3px 6px;
-      border-radius: 4px; font-size: 0.8em; cursor: pointer;
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 0.8em;
+      cursor: pointer;
     }
 
     .summary-box {
-      background: #eef; padding: 8px;
-      border-radius: 6px; margin-top: 10px;
+      background: #eef;
+      padding: 8px;
+      border-radius: 6px;
+      margin-top: 10px;
       font-size: 14px;
     }
 
-    /* ─── モーダル共通 ─── */
+    /* ─── モーダル ─── */
     .modal {
-      display: none; position: fixed; z-index: 1000;
-      left: 0; top: 0; width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.4);
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
     }
     .modal-content {
-      background-color: white; margin: 10% auto;
-      padding: 20px; border-radius: 10px;
+      background-color: white;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 10px;
       width: 90%; max-width: 400px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
     .modal-content h3 { margin-top: 0; }
     .modal-content .player-row {
-      display: flex; gap: 10px; margin-bottom: 10px;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
     }
     .modal-content select, .modal-content input {
-      flex: 1; padding: 8px;
+      flex: 1;
+      padding: 8px;
     }
   </style>
 </head>
 <body>
   <h1>対戦履歴</h1>
 
-  <!-- ホームへ戻るボタン -->
+  <!-- ナビゲーション -->
   <div class="top-nav">
-    <button class="main-button" onclick="location.href='index.html'">
-      ホームに戻る
-    </button>
+    <button class="main-button" onclick="location.href='index.html'">ホームに戻る</button>
   </div>
 
   <!-- 日付フィルター -->
@@ -95,10 +121,10 @@
     <label>終了日: <input id="endDate" type="date" /></label>
   </div>
 
-  <!-- セッション一覧表示領域 -->
+  <!-- セッション一覧を描画するコンテナ -->
   <div id="historyContainer"></div>
 
-  <!-- ■ 半荘追加モーダル ■ -->
+  <!-- 半荘追加モーダル -->
   <div id="addModal" class="modal">
     <div class="modal-content">
       <h3>半荘を追加</h3>
@@ -108,7 +134,7 @@
     </div>
   </div>
 
-  <!-- ■ 半荘削除確認モーダル ■ -->
+  <!-- 削除確認モーダル（半荘単位） -->
   <div id="deleteModal" class="modal">
     <div class="modal-content">
       <h3>削除確認</h3>
@@ -120,17 +146,23 @@
 
   <script type="module">
     // ─── Firebase Auth 初期化 ───
-    import { getAuth, signInAnonymously, onAuthStateChanged }
-      from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     const auth = getAuth();
     signInAnonymously(auth)
-      .then(() => console.log("🔑 匿名ログイン成功"))
-      .catch(error => console.error("⚠️ ログイン失敗:", error.message));
+      .then(() => {
+        console.log("🔑 匿名ログイン成功");
+      })
+      .catch(error => {
+        console.error("⚠️ ログイン失敗:", error.message);
+      });
 
-    onAuthStateChanged(auth, user => {
-      if (user) console.log("👤 ログインユーザー:", user.uid);
-      else      console.log("🚪 ログインしていません");
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("👤 ログインユーザー:", user.uid);
+      } else {
+        console.log("🚪 ログインしていません");
+      }
     });
 
     // ─── Firebase Firestore 初期化 ───
@@ -158,12 +190,12 @@
     const playersRef  = collection(db, "players");
     const sessionsRef = collection(db, "sessions");
 
-    let playerMap          = {};
-    let playerList         = [];
-    let currentSessionId   = null;
-    let lastLoadedSessions = []; // ソート済み・キャッシュ済みのセッション配列
+    let playerMap         = {};
+    let playerList        = [];
+    let currentSessionId  = null;   // 現在追加先のセッションIDを保持
+    let lastLoadedSessions = [];    // ロード後にソートしてキャッシュ
 
-    // ─── プレイヤーマップを読み込む ───
+    // ─── プレイヤーマップを読み込み ───
     async function loadPlayerMap() {
       const snap = await getDocs(playersRef);
       playerMap = {};
@@ -175,17 +207,18 @@
       });
     }
 
-    // ─── 半荘追加モーダルを開く ───
+    // ─── モーダルを開く（半荘追加） ───
     function openAddModal(sessionId) {
       currentSessionId = sessionId;
       const form = document.getElementById("addForm");
       form.innerHTML = "";
 
-      // 4人分の「プレイヤー選択＋点数入力」行を追加
+      // 4人分の入力行を動的に生成
       for (let i = 0; i < 4; i++) {
         const row = document.createElement("div");
         row.className = "player-row";
 
+        // プレイヤー選択ドロップダウン
         const select = document.createElement("select");
         playerList.forEach(p => {
           const opt = document.createElement("option");
@@ -194,6 +227,7 @@
           select.appendChild(opt);
         });
 
+        // 点数入力フィールド
         const input = document.createElement("input");
         input.type = "number";
         input.placeholder = "ポイント";
@@ -211,38 +245,39 @@
       document.getElementById("addModal").style.display = "none";
     }
 
-    // ─── Firestore から sessions を読み込み、セッションタイトル（日付）で降順ソートし表示 ───
+    // ─── 全セッションを取得して降順ソートし、描画 ───
     async function loadAndDisplay() {
-      // ① プレイヤーマップ更新
+      // プレイヤーマップを最新化
       await loadPlayerMap();
 
-      // ② Firestore から sessions 一括取得
+      // Firestore から sessions コレクションを取得
       const snap = await getDocs(sessionsRef);
+      // ドキュメントをマップして配列化
       let sessions = snap.docs.map(docSnap => {
         return { id: docSnap.id, ...docSnap.data() };
       });
 
-      // ③ セッションタイトル（日付文字列）で降順ソート
-      //    ISO フォーマット yyyy-mm-dd 同士なら文字列比較でOK
+      // タイトル（＝日付文字列）をキーに降順ソートする
+      // ISO 形式 (yyyy-mm-dd) の文字列であれば文字列比較で OK
       sessions.sort((a, b) => {
         return b.title.localeCompare(a.title);
       });
 
-      // ④ キャッシュして、最初の描画
       lastLoadedSessions = sessions;
       renderSessions(filterSessions(sessions));
     }
 
-    // ─── 日付フィルターで絞り込み ───
+    // ─── 日付フィルターに沿って絞り込み ───
     function filterSessions(sessions) {
       const start = document.getElementById("startDate").value;
       const end   = document.getElementById("endDate").value;
       return sessions.filter(s => {
+        // セッションタイトル(=日付)が範囲内かチェック
         return (!start || s.title >= start) && (!end || s.title <= end);
       });
     }
 
-    // ─── セッションを HTML に描画 ───
+    // ─── セッション一覧をHTMLに描画 ───
     function renderSessions(sessions) {
       const container = document.getElementById("historyContainer");
       container.innerHTML = "";
@@ -251,10 +286,10 @@
         const div = document.createElement("div");
         div.className = "session";
 
-        // セッション内の合計ポイントを計算
+        // 合計ポイントを計算
         const summary = summarizePoints(session.games);
 
-        // 各ゲーム行の HTML
+        // 各ゲームのHTML
         const gamesHTML = session.games.map((game, i) => {
           const detail = game.players
             .map(p => `${playerMap[p.id] || p.id}(${p.point})`)
@@ -270,9 +305,7 @@
         div.innerHTML = `
           <div class="session-header">
             <h3>${session.title}</h3>
-            <button class="edit-button" onclick="openAddModal('${session.id}')">
-              半荘追加
-            </button>
+            <button class="edit-button" onclick="openAddModal('${session.id}')">半荘追加</button>
           </div>
           ${gamesHTML}
           <div class="summary-box">${summary}</div>
@@ -281,7 +314,7 @@
       });
     }
 
-    // ─── セッション内の全ゲームからプレイヤーごとの合計ポイントを取得して文字列化 ───
+    // ─── セッション内の全ゲームからプレイヤーごとの合計ポイントを文字列化 ───
     function summarizePoints(games) {
       const totals = {};
       games.forEach(game => {
@@ -290,23 +323,25 @@
           totals[p.id] += p.point;
         });
       });
+      // 「名前: +xx.xpt」の形式で改行結合して返す
       return Object.entries(totals)
         .map(([id, pt]) => `${playerMap[id] || id}: ${pt >= 0 ? '+' : ''}${pt.toFixed(1)}pt`)
         .join('<br>');
     }
 
-    // ─── 半荘削除 ───
+    // ─── 半荘をFirestore上から削除 ───
     async function deleteGame(sessionId, gameIndex) {
       if (!confirm("この半荘を削除しますか？")) return;
       const sessionRef = doc(db, "sessions", sessionId);
       const snap       = await getDoc(sessionRef);
       const data       = snap.data();
+
       data.games.splice(gameIndex, 1);
       await updateDoc(sessionRef, { games: data.games });
       loadAndDisplay();
     }
 
-    // ─── モーダル内で入力されている半荘を Firestore に追加 ───
+    // ─── モーダル内入力を検証してFirestoreに追加 ───
     async function saveNewHanchan() {
       const rows = document.querySelectorAll("#addForm .player-row");
       const players = Array.from(rows).map(row => {
@@ -328,18 +363,19 @@
       const sessionRef = doc(db, "sessions", currentSessionId);
       const snap       = await getDoc(sessionRef);
       const data       = snap.data();
-      const newGame    = {
+
+      const newGame = {
         date: new Date().toISOString().split("T")[0],
         players: players
       };
-      const newGames   = data.games.concat(newGame);
+      const newGames = data.games.concat(newGame);
       await updateDoc(sessionRef, { games: newGames });
 
       closeModal();
       loadAndDisplay();
     }
 
-    // ─── 日付フィルターの onchange で再描画 ───
+    // ─── DOM 完全読み込み後に初期ロード ───
     document.getElementById("startDate").addEventListener("change", () => {
       renderSessions(filterSessions(lastLoadedSessions));
     });
@@ -347,7 +383,6 @@
       renderSessions(filterSessions(lastLoadedSessions));
     });
 
-    // ─── ページ読み込み後、最初にセッションを読み込む ───
     document.addEventListener("DOMContentLoaded", () => {
       loadAndDisplay();
     });
