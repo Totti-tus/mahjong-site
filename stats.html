@@ -1,21 +1,115 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>総合成績 / 個人成績</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* 省略（見た目用の CSS） */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      padding: 20px;
+      margin: 0;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .filter-box {
+      max-width: 500px;
+      margin: 10px auto;
+      text-align: center;
+    }
+    .filter-box input {
+      margin: 5px;
+      padding: 8px;
+      font-size: 14px;
+    }
+    .main-button {
+      display: block;
+      width: 100%;
+      max-width: 300px;
+      margin: 20px auto;
+      padding: 15px;
+      font-size: 18px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .main-button:hover {
+      background-color: #0056b3;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 10px;
+    }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background-color: #e0e0e0;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    th:first-child, td:first-child {
+      position: sticky;
+      left: 0;
+      background: #ffffff;
+      z-index: 2;
+      font-weight: bold;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    }
+    .highlight-max { background-color: #d0e7ff; }
+    .highlight-min { background-color: #ffdede; }
+    .clickable-name {
+      cursor: pointer;
+      color: #007bff;
+      text-decoration: underline;
+    }
+    .player-detail {
+      background-color: #e6f4ea;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .opponent-section {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    canvas {
+      margin-top: 20px;
+      max-width: 100%;
+    }
   </style>
 </head>
 <body>
   <h1>総合成績 / 個人成績</h1>
+
   <div class="filter-box">
-    <label>開始日：<input id="startDate" type="date"/></label>
-    <label>終了日：<input id="endDate" type="date"/></label>
+    <label>開始日：<input id="startDate" type="date" /></label>
+    <label>終了日：<input id="endDate" type="date" /></label>
   </div>
   <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+
   <div class="table-wrapper">
     <table id="statsTable">
       <thead>
@@ -37,254 +131,357 @@
       <tbody></tbody>
     </table>
   </div>
+
   <div id="playerDetail"></div>
 
   <script type="module">
+    // Firebase SDK 読み込み（認証＋Firestore）
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import Chart from "https://cdn.jsdelivr.net/npm/chart.js";
 
-    // ── (A) Firebase プロジェクトの設定情報 ───────────────────────
+    // Firebase 初期設定
     const firebaseConfig = {
       apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
       authDomain: "mahjong-app-2e2e9.firebaseapp.com",
       projectId: "mahjong-app-2e2e9",
       storageBucket: "mahjong-app-2e2e9.appspot.com",
       messagingSenderId: "440425002404",
-      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
+      measurementId: "G-NP9EELBD7R"
     };
 
-    const app  = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db   = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    // ── (B) プレイヤー名を一括で読み込む（ID→表示名のマップを作る）──
-    const playersMap = {};
+    // 匿名認証
+    const auth = getAuth();
+    signInAnonymously(auth)
+      .then(() => {
+        console.log("匿名ログイン成功");
+      })
+      .catch((error) => {
+        console.error("ログイン失敗:", error.message);
+      });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("ログインユーザー:", user.uid);
+      } else {
+        console.log("ログインしていません");
+      }
+    });
+
+    // グローバル変数
+    let allSessions = [];      // Firestore から取得したすべてのセッション（セット）
+    const playersMap = {};     // { playerId: playerName, ... }
+    window.playerData = {};    // 計算済みのプレイヤー別集計データ
+
+    // プレイヤー名を取得して playersMap に詰める
     async function loadPlayerNames() {
       const snap = await getDocs(collection(db, "players"));
-      snap.forEach(doc => {
-        const d = doc.data();
-        playersMap[d.id] = d.name;
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        playersMap[data.id] = data.name;
       });
     }
 
-    // ── (C) 全 Session ドキュメントをキャッシュ ────────────────────
-    let allSessions = [];
+    // Firestore の sessions コレクションを監視し、変更ごとに再計算・描画
+    import { collection as colSessions } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    document.addEventListener("DOMContentLoaded", async () => {
+      await loadPlayerNames();
 
-    // ── (D) 「匿名ログイン → 認証完了後にデータを取得」までの流れ ──────
-    signInAnonymously(auth)
-      .then(async () => {
-        console.log("🔑 匿名ログイン成功");
-        // ══ 認証完了後、一気に初期セットアップを行う ══
+      // 日付フィルターが変更されたときにも再描画
+      document.getElementById("startDate").addEventListener("change", filterAndCalculate);
+      document.getElementById("endDate").addEventListener("change", filterAndCalculate);
 
-        // (D-1) まずプレイヤーマップを読み込む
-        await loadPlayerNames();
-
-        // (D-2) 日付フィルターに変化があったときも再描画できるようにする
-        document.getElementById("startDate").addEventListener("change", filterAndCalculate);
-        document.getElementById("endDate").addEventListener("change", filterAndCalculate);
-
-        // (D-3) Firestore の sessions コレクションを監視して、
-        //       データが更新されたら都度キャッシュして再描画する
-        const sessionsCol = collection(db, "sessions");
-        onSnapshot(sessionsCol, snapshot => {
-          allSessions = [];
-          snapshot.forEach(doc => allSessions.push(doc.data()));
-          filterAndCalculate();
+      // Firestore sessions コレクションの変化を監視
+      onSnapshot(colSessions(db, "sessions"), snapshot => {
+        allSessions = [];
+        snapshot.forEach(docSnap => {
+          allSessions.push(docSnap.data());
         });
-      })
-      .catch(err => {
-        console.error("⚠️ 匿名ログイン失敗:", err.message);
+        filterAndCalculate();
       });
+    });
 
-    // ── (E) 日付フィルタ＋再計算・再描画 ─────────────────────────
+    // フィルター → 集計 → 描画 の一連の流れ
     function filterAndCalculate() {
       const start = document.getElementById("startDate").value;
       const end   = document.getElementById("endDate").value;
-      const filtered = allSessions
-        .map(s => ({
-          ...s,
-          games: s.games.filter(g => (!start || g.date >= start) && (!end || g.date <= end))
-        }))
-        .filter(s => s.games.length > 0);
+      const filtered = allSessions.map(sess => ({
+        ...sess,
+        games: sess.games.filter(g => {
+          const d = g.date;
+          return (!start || d >= start) && (!end || d <= end);
+        })
+      })).filter(sess => sess.games.length > 0);
       calculateStats(filtered);
+      renderTable();
     }
 
-    // ── (F) 統計を計算し、テーブル＋詳細エリアを描画 ────────────────
+    // プレイヤー別に集計（各種統計値を計算）
     function calculateStats(sessions) {
-      // ① 各プレイヤーの集計用オブジェクトを作る
-      const playerData = {};
+      const pd = {}; // 一時オブジェクト
+
       sessions.forEach(session => {
         session.games.forEach(game => {
-          // 着順でソート
+          // game.players = [ { id, point }, ... ]
+          // 順位計算のため、ポイント順にソート
           const sorted = [...game.players].sort((a, b) => b.point - a.point);
-          sorted.forEach((p, i) => {
-            if (!playerData[p.id]) {
-              playerData[p.id] = {
+          sorted.forEach((p, idx) => {
+            if (!pd[p.id]) {
+              pd[p.id] = {
                 id: p.id,
                 name: playersMap[p.id] || p.id,
-                games: 0, tops: 0, seconds: 0, thirds: 0, fourths: 0,
-                totalRank: 0, totalPoint: 0,
-                pointHistory: [], rankHistory: [],
-                vs: {}, sessionHistory: [], sessionSums: []
+                games: 0,
+                tops: 0,
+                seconds: 0,
+                thirds: 0,
+                fourths: 0,
+                totalRank: 0,
+                totalPoint: 0,
+                pointHistory: [],
+                rankHistory: [],
+                vs: {},            // { oppId: { games, wins, pointDiff }, ... }
+                sessionHistory: [], // 参加したセッションオブジェクトの配列
+                sessionSums: []     // 各セッション（set）あたりの合計pt
               };
             }
-            const d = playerData[p.id];
+            const d = pd[p.id];
             d.games++;
-            if (i === 0)      d.tops++;
-            else if (i === 1) d.seconds++;
-            else if (i === 2) d.thirds++;
-            else if (i === 3) d.fourths++;
-
-            d.totalRank  += (i + 1);
             d.totalPoint += p.point;
+            d.totalRank += (idx + 1);
             d.pointHistory.push(p.point);
-            d.rankHistory.push(i + 1);
+            d.rankHistory.push(idx + 1);
+            // 着順別
+            if (idx === 0) d.tops++;
+            else if (idx === 1) d.seconds++;
+            else if (idx === 2) d.thirds++;
+            else if (idx === 3) d.fourths++;
 
-            // ── 「1セッションあたりの合計点」配列 ──
-            //  ※ここでは仮にそのまま p.point を転記していますが、必要に応じて
-            //   「そのセッションの中の全ゲームを合計した値」を格納してください。
-            d.sessionSums.push(p.point);
-            d.sessionHistory.push({ title: session.title });
-
-            // ── 相手別勝敗（簡易的に「点数 >= 0 の数」を勝利回数としてカウント）──
+            // 各対戦相手との集計
             game.players.forEach(op => {
-              if (op.id !== p.id) {
-                d.vs[op.id] = (d.vs[op.id] || 0) + (p.point >= 0 ? 1 : 0);
+              if (op.id === p.id) return;
+              if (!d.vs[op.id]) {
+                d.vs[op.id] = { games: 0, wins: 0, pointDiff: 0 };
               }
+              d.vs[op.id].games++;
+              d.vs[op.id].pointDiff += (p.point - op.point);
+              if (p.point > op.point) d.vs[op.id].wins++;
             });
           });
         });
+        // セッション履歴をまとめる
+        Object.keys(pd).forEach(pid => {
+          const participated = session.games.some(game =>
+            game.players.some(p => p.id === pid)
+          );
+          if (participated) {
+            pd[pid].sessionHistory.push(session);
+          }
+        });
       });
 
-      // ② テーブル本体を空にしてから再構築
-      const table = document.getElementById("statsTable");
-      // <thead>行以外をすべて削除
-      table.querySelectorAll("tbody, tr:not(:first-child)").forEach(el => el.remove());
+      // 各プレイヤーごとに「1セッションあたりの合計pt」を算出して sessionSums に詰める
+      Object.values(pd).forEach(p => {
+        p.sessionSums = p.sessionHistory.map(sess => {
+          // このセッション内の全ゲームについて、自分のpt を合計
+          return sess.games.reduce((acc, gm) => {
+            const me = gm.players.find(x => x.id === p.id);
+            return acc + (me ? me.point : 0);
+          }, 0);
+        });
+      });
 
-      const tbody = document.createElement("tbody");
-      Object.values(playerData).forEach(p => {
-        const avgPoint      = (p.totalPoint / p.games).toFixed(1);
-        const avgRank       = (p.totalRank  / p.games).toFixed(2);
-        const topRate       = ((p.tops / p.games) * 100).toFixed(1) + "%";
-        const avoidLastRate = (((p.games - p.fourths) / p.games) * 100).toFixed(1) + "%";
-        const maxPoint      = Math.max(...p.pointHistory).toFixed(1);
-        const minPoint      = Math.min(...p.pointHistory).toFixed(1);
-        const maxIdx        = p.sessionSums.indexOf(Math.max(...p.sessionSums));
-        const minIdx        = p.sessionSums.indexOf(Math.min(...p.sessionSums));
-        const maxSession    = maxIdx !== -1
-          ? `${p.sessionSums[maxIdx].toFixed(1)} pt (${p.sessionHistory[maxIdx].title})`
-          : "-";
-        const minSession    = minIdx !== -1
-          ? `${p.sessionSums[minIdx].toFixed(1)} pt (${p.sessionHistory[minIdx].title})`
-          : "-";
+      window.playerData = pd;
+    }
+
+    // テーブル部分を描画
+    function renderTable() {
+      const tbody = document.querySelector("#statsTable tbody");
+      tbody.innerHTML = "";
+      const pdata = window.playerData;
+      Object.values(pdata).forEach(p => {
+        const avgRank  = (p.totalRank / p.games).toFixed(2);
+        const avgPoint = (p.totalPoint / p.games).toFixed(1);
+        const topRate  = ((p.tops / p.games) * 100).toFixed(1) + "%";
+        const twoRate  = (((p.tops + p.seconds) / p.games) * 100).toFixed(1) + "%";
+        const avoidLast = (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1) + "%";
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${p.name}</td>
+          <td><span class="clickable-name" data-id="${p.id}">${p.name}</span></td>
           <td>${p.games}</td>
-          <td>${p.totalPoint.toFixed(1)}</td>
+          <td>${p.totalPoint >= 0 ? "+" : ""}${p.totalPoint.toFixed(1)}</td>
           <td>${p.tops}</td>
           <td>${p.seconds}</td>
           <td>${p.thirds}</td>
           <td>${p.fourths}</td>
           <td>${topRate}</td>
-          <td>${((p.tops + p.seconds) / p.games * 100).toFixed(1)}%</td>
-          <td>${avoidLastRate}</td>
+          <td>${twoRate}</td>
+          <td>${avoidLast}</td>
           <td>${avgRank}</td>
           <td>${avgPoint}</td>
         `;
         tbody.appendChild(tr);
       });
-      table.appendChild(tbody);
+      applyHighlighting();
 
-      // ③ 各プレイヤーの詳細エリア（グラフ＋ドロップダウン）を表示
+      // 各プレイヤー名にクリックイベントを追加し、詳細エリアを切り替え
+      document.querySelectorAll(".clickable-name").forEach(el => {
+        el.addEventListener("click", () => {
+          const pid = el.getAttribute("data-id");
+          viewPlayerDetail(pid);
+        });
+      });
+
+      // テーブル描画後、最初のプレイヤーを選択して詳細表示
+      const firstId = Object.keys(window.playerData)[0];
+      if (firstId) viewPlayerDetail(firstId);
+    }
+
+    // 列ごとに最大／最小をハイライト
+    function applyHighlighting() {
+      const table = document.getElementById("statsTable");
+      const rows  = Array.from(table.querySelectorAll("tbody tr"));
+      const nCols = table.rows[0].cells.length;
+      for (let c = 1; c < nCols; c++) {
+        let max = -Infinity, min = +Infinity;
+        rows.forEach(row => {
+          const v = parseFloat(row.cells[c].textContent);
+          if (!isNaN(v)) {
+            max = Math.max(max, v);
+            min = Math.min(min, v);
+          }
+        });
+        rows.forEach(row => {
+          const cell = row.cells[c];
+          const v = parseFloat(cell.textContent);
+          cell.classList.remove("highlight-max", "highlight-min");
+          const headerText = table.rows[0].cells[c].textContent.trim();
+          if (!isNaN(v)) {
+            // “平均着順”だけは最小値を「良い成績」と見なして highlight-max にする
+            if (headerText === "平均着順") {
+              if (v === min) cell.classList.add("highlight-max");
+              if (v === max) cell.classList.add("highlight-min");
+            } else {
+              if (v === max) cell.classList.add("highlight-max");
+              if (v === min) cell.classList.add("highlight-min");
+            }
+          }
+        });
+      }
+    }
+
+    // クリックされたプレイヤーの詳細エリアを表示（1人分だけ）
+    window.viewPlayerDetail = function(pid) {
+      const p = window.playerData[pid];
+      if (!p) return;
       const detailDiv = document.getElementById("playerDetail");
-      detailDiv.innerHTML = ""; // まずクリア
+      detailDiv.innerHTML = ""; // まず空にする
 
-      Object.values(playerData).forEach(p => {
-        const container = document.createElement("div");
-        container.className = "player-detail";
-        container.innerHTML = `
+      // 基本情報
+      const avgPoint    = (p.totalPoint / p.games).toFixed(1);
+      const avgRank     = (p.totalRank / p.games).toFixed(2);
+      const topRateVal  = ((p.tops / p.games) * 100).toFixed(1);
+      const avoidLastVal= (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1);
+      const maxPoint    = Math.max(...p.pointHistory).toFixed(1);
+      const minPoint    = Math.min(...p.pointHistory).toFixed(1);
+      // 1セットあたりの最高／最低
+      const maxIdx = p.sessionSums.indexOf(Math.max(...p.sessionSums));
+      const minIdx = p.sessionSums.indexOf(Math.min(...p.sessionSums));
+      const maxSessionText = (p.sessionSums.length && maxIdx !== -1)
+        ? `${p.sessionSums[maxIdx].toFixed(1)} pt （${p.sessionHistory[maxIdx].title}）`
+        : "-";
+      const minSessionText = (p.sessionSums.length && minIdx !== -1)
+        ? `${p.sessionSums[minIdx].toFixed(1)} pt （${p.sessionHistory[minIdx].title}）`
+        : "-";
+
+      // HTML を挿入
+      detailDiv.innerHTML = `
+        <div class="player-detail">
           <h2>${p.name} の成績詳細</h2>
           <p>
             🀄 対局数：${p.games} 回<br>
             🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>
-            📈 平均ポイント：${((p.totalPoint / p.games)||0).toFixed(1)} pt<br>
-            🧮 平均着順：${((p.totalRank / p.games)||0).toFixed(2)} 位<br>
-            👑 トップ率：${((p.tops / p.games)*100).toFixed(1)}%<br>
-            🚫 ラス回避率：${(((p.games - p.fourths) / p.games)*100).toFixed(1)}%<br>
+            📈 平均ポイント：${avgPoint} pt<br>
+            🧮 平均着順：${avgRank} 位<br>
+            👑 トップ率：${topRateVal}%<br>
+            🚫 ラス回避率：${avoidLastVal}%<br>
             🔺 1半荘での最大獲得pt：${maxPoint} pt<br>
             🔻 1半荘での最小獲得pt：${minPoint} pt<br>
-            📊 1日(1セット)での最高成績：${maxSession}<br>
-            📉 1日(1セット)での最低成績：${minSession}<br>
+            📊 1日(1セット)での最高成績：${maxSessionText}<br>
+            📉 1日(1セット)での最低成績：${minSessionText}<br>
           </p>
-          <canvas id="pointChart-${p.id}" height="150"></canvas>
+          <canvas id="pointChart"></canvas>
           <div class="opponent-section">
             <label>対戦相手を選択：
-              <select id="opponentSelect-${p.id}">
+              <select id="opponentSelect">
                 <option value="">--選択してください--</option>
+                ${Object.keys(p.vs).sort().map(oppId => `
+                  <option value="${oppId}">${playersMap[oppId] || oppId}</option>
+                `).join('')}
               </select>
             </label>
-            <div id="opponentStats-${p.id}"></div>
+            <div id="opponentStats"></div>
           </div>
+        </div>
+      `;
+
+      // 累積ポイント推移グラフを描く
+      drawPointGraph(p);
+
+      // 相手を選んだときのイベント
+      document.getElementById("opponentSelect").addEventListener("change", e => {
+        const oppId = e.target.value;
+        const statsDiv = document.getElementById("opponentStats");
+        if (!oppId || !p.vs[oppId]) {
+          statsDiv.innerHTML = "";
+          return;
+        }
+        const vs = p.vs[oppId];
+        const avgDiff = (vs.pointDiff / vs.games).toFixed(1);
+        const winRate = ((vs.wins / vs.games) * 100).toFixed(1);
+        statsDiv.innerHTML = `
+          <p>同卓回数：${vs.games} 回</p>
+          <p>勝利回数：${vs.wins} 回 (${winRate}%)</p>
+          <p>平均点差：${avgDiff} pt</p>
         `;
-        detailDiv.appendChild(container);
+      });
+    };
 
-        // ── 累積ポイント推移グラフ ──
-        const ctx = document.getElementById(`pointChart-${p.id}`).getContext("2d");
-        const cumulative = p.pointHistory.reduce((acc, cur, idx) => {
-          acc.push((idx === 0 ? 0 : acc[idx-1]) + cur);
-          return acc;
-        }, []);
-        new Chart(ctx, {
-          type: "line",
-          data: {
-            labels: cumulative.map((_, i) => i + 1),
-            datasets: [{
-              label: "累積ポイント",
-              data: cumulative,
-              borderColor: "blue",
-              fill: false
-            }]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              x: { title: { display: true, text: "対局数" } },
-              y: { title: { display: true, text: "累積ポイント" } }
-            }
+    // 累積ポイント推移グラフ
+    function drawPointGraph(p) {
+      // 累積データを作成
+      const cum = [];
+      p.pointHistory.reduce((acc, cur) => {
+        const next = acc + cur;
+        cum.push(next.toFixed(1));
+        return next;
+      }, 0);
+      const labels = cum.map((_, i) => `#${i + 1}`);
+
+      const ctx = document.getElementById("pointChart").getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "累積ポイント推移",
+            data: cum,
+            borderColor: "blue",
+            fill: false,
+            tension: 0.1,
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "対局数" } },
+            y: { title: { display: true, text: "累積ポイント" } }
           }
-        });
-
-        // ── 対戦相手別勝利回数プルダウン ──
-        const sel = document.getElementById(`opponentSelect-${p.id}`);
-        Object.keys(p.vs).sort().forEach(oppId => {
-          const opt = document.createElement("option");
-          opt.value = oppId;
-          // 勝利回数を表示例として入れておく
-          opt.textContent = `${playersMap[oppId] || oppId} (勝利：${p.vs[oppId]}回)`;
-          sel.appendChild(opt);
-        });
-
-        sel.addEventListener("change", e => {
-          const oppId = e.target.value;
-          const winCount = p.vs[oppId] || 0;
-          const totalGames = sessions
-            .flatMap(s => s.games)
-            .filter(g => g.players.some(x => x.id === p.id) && g.players.some(x => x.id === oppId))
-            .length;
-          const winRate = totalGames > 0 ? ((winCount / totalGames) * 100).toFixed(1) : "-";
-          const statsDiv = document.getElementById(`opponentStats-${p.id}`);
-          statsDiv.innerHTML = `
-            <p>
-              📊 ${p.name} vs ${playersMap[oppId] || oppId}<br>
-              🔁 同卓回数：${totalGames} 回<br>
-              🥇 勝利回数：${winCount} 回 (${winRate}%)<br>
-            </p>
-          `;
-        });
+        }
       });
     }
   </script>
