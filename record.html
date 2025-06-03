@@ -247,8 +247,10 @@
 
     // ─── 全セッションを取得して降順ソートし、描画 ───
     async function loadAndDisplay() {
+      // プレイヤーマップを最新化
       await loadPlayerMap();
 
+      // Firestore から sessions コレクションを取得
       const snap = await getDocs(sessionsRef);
       // ドキュメントをマップして配列化
       let sessions = snap.docs.map(docSnap => {
@@ -256,8 +258,8 @@
       });
 
       // タイトル（＝日付文字列）をキーに降順ソートする
+      // ISO 形式 (yyyy-mm-dd) の文字列であれば文字列比較で OK
       sessions.sort((a, b) => {
-        // ISO 形式の日付文字列を単純に比較すればOK
         return b.title.localeCompare(a.title);
       });
 
