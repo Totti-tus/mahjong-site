@@ -144,7 +144,15 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { collection as colSessions } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const firebaseConfig = { /* Your config here */ };
+    const firebaseConfig = {
+      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+      projectId: "mahjong-app-2e2e9",
+      storageBucket: "mahjong-app-2e2e9.appspot.com",
+      messagingSenderId: "440425002404",
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
+      measurementId: "G-NP9EELBD7R"
+    };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth();
