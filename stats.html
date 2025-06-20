@@ -36,17 +36,22 @@
       background-color: #007bff;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 10px;
       cursor: pointer;
     }
+    .main-button:hover { background-color: #0056b3; }
     .table-wrapper {
       overflow-x: auto;
-      margin-top: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 10px;
     }
     table {
-      border-collapse: collapse;
       width: 100%;
-      background: white;
+      min-width: 900px;
+      border-collapse: collapse;
+      margin-top: 20px;
     }
     th, td {
       border: 1px solid #ccc;
@@ -76,9 +81,17 @@
     }
     .player-detail {
       background-color: #e6f4ea;
-      padding: 15px;
-      border-radius: 8px;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .opponent-section {
       margin-top: 20px;
+      padding: 10px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
     }
     canvas {
       margin-top: 20px;
@@ -125,222 +138,172 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { collection as colSessions } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-      projectId: "mahjong-app-2e2e9",
-      storageBucket: "mahjong-app-2e2e9.appspot.com",
-      messagingSenderId: "440425002404",
-      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31",
-      measurementId: "G-NP9EELBD7R"
-    };
+    const firebaseConfig = { /* Your config */ };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const auth = getAuth();
-    signInAnonymously(auth).catch(e => console.error(e.message));
-    onAuthStateChanged(auth, user => {
-      console.log(user ? `ログイン: ${user.uid}` : "未ログイン");
-    });
+    const auth = getAuth(); signInAnonymously(auth).catch(console.error);
 
-    let allSessions = [];
-    const playersMap = {};
-    window.playerData = {};
+    let allSessions = [], playersMap = {}, window.playerData = {};
 
     async function loadPlayerNames() {
       const snap = await getDocs(collection(db, "players"));
-      snap.forEach(doc => { playersMap[doc.data().id] = doc.data().name; });
+      snap.forEach(doc => playersMap[doc.data().id] = doc.data().name);
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
       await loadPlayerNames();
-      onSnapshot(colSessions(db, "sessions"), snap => {
-        allSessions = [];
-        snap.forEach(doc => allSessions.push({ title: doc.data().title, games: doc.data().games }));
-        filterAndCalculate();
-      });
       document.getElementById("startDate").addEventListener("change", filterAndCalculate);
       document.getElementById("endDate").addEventListener("change", filterAndCalculate);
+      onSnapshot(colSessions(db, "sessions"), snap => { allSessions = snap.docs.map(d => d.data()); filterAndCalculate(); });
     });
 
     function filterAndCalculate() {
       const start = document.getElementById("startDate").value;
-      const end   = document.getElementById("endDate").value;
-      const filtered = allSessions.map(s => ({
-        ...s,
-        games: s.games.filter(g => (!start || g.date >= start) && (!end || g.date <= end))
-      })).filter(s => s.games.length > 0);
-      filtered.sort((a,b) => new Date(a.title) - new Date(b.title));
+      const end = document.getElementById("endDate").value;
+      const filtered = allSessions.map(sess => ({
+        ...sess,
+        games: sess.games.filter(g => (!start || g.date >= start) && (!end || g.date <= end))
+      })).filter(sess => sess.games.length);
       calculateStats(filtered);
       renderTable();
     }
 
     function calculateStats(sessions) {
-      const rankPointMap = {1:50,2:10,3:-10,4:-50};
-      const BASE = 30000;
+      const rankPointMap = {1:50,2:10,3:-10,4:-30};
       const pd = {};
-      sessions.forEach(sess => {
-        sess.games.forEach(game => {
-          const sorted = [...game.players].sort((a,b) => b.point - a.point);
-          sorted.forEach((p,idx) => {
-            if (!pd[p.id]) pd[p.id] = { id:p.id, name:playersMap[p.id]||p.id, games:0, tops:0, seconds:0, thirds:0, fourths:0, totalRank:0, totalPoint:0, pointHistory:[], rankHistory:[], vs:{}, sessionHistory:[], sessionSums:[] };
-            const d = pd[p.id];
-            const rank = idx+1;
-            const rankPt = rankPointMap[rank];
-            const rawDiff = p.point - rankPt;
-            const finalScore = BASE + rawDiff;
-            d.totalPoint += p.point;
-            d.totalRank  += rank;
-            d.games++;
-            d.pointHistory.push(p.point);
-            d.rankHistory.push(rank);
-            if (rank===1) d.tops++;
-            if (rank===2) d.seconds++;
-            if (rank===3) d.thirds++;
-            if (rank===4) d.fourths++;
+      // ソート：古い順
+      sessions.sort((a, b) => new Date(a.title) - new Date(b.title));
+      sessions.forEach(session => {
+        session.games.forEach(game => {
+          const sorted = [...game.players].sort((a, b) => b.point - a.point);
+          sorted.forEach((p, idx) => {
+            if (!pd[p.id]) pd[p.id] = {id:p.id,name:playersMap[p.id]||p.id,games:0,tops:0,seconds:0,thirds:0,fourths:0,totalRank:0,totalPoint:0,totalRankPoint:0,pointHistory:[],rankHistory:[],vs:{},sessionHistory:[],sessionSums:[]};
+            const d = pd[p.id], rank = idx+1, rankPt = rankPointMap[rank];
+            d.games++; d.totalPoint += p.point; d.totalRank += rank; d.totalRankPoint += rankPt;
+            d.pointHistory.push(p.point); d.rankHistory.push(rank);
+            rank===1?d.tops++:rank===2?d.seconds++:rank===3?d.thirds++:d.fourths++;
             game.players.forEach(op => {
               if (op.id===p.id) return;
-              if (!d.vs[op.id]) d.vs[op.id] = { games:0, wins:0, pointDiff:0 };
-              d.vs[op.id].games++;
-              d.vs[op.id].pointDiff += (p.point - op.point);
-              if (p.point > op.point) d.vs[op.id].wins++;
+              if (!d.vs[op.id]) d.vs[op.id] = {games:0,wins:0,pointDiff:0};
+              d.vs[op.id].games++; d.vs[op.id].pointDiff += (p.point-op.point);
+              if (p.point>op.point) d.vs[op.id].wins++;
             });
           });
-          Object.keys(pd).forEach(pid => {
-            const participated = sess.games.some(g => g.players.some(x=>x.id===pid));
-            if (participated) pd[pid].sessionHistory.push(sess);
-          });
+        });
+        Object.keys(pd).forEach(pid => {
+          if (session.games.some(gm => gm.players.some(x=>x.id===pid))) pd[pid].sessionHistory.push(session);
         });
       });
-      Object.values(pd).forEach(p=>{
-        p.sessionSums = p.sessionHistory.map(sess =>
-          sess.games.reduce((acc,gm) => {
-            const me = gm.players.find(x=>x.id===p.id);
-            return acc + (me? me.point : 0);
-          }, 0)
-        );
+      Object.values(pd).forEach(p => {
+        p.sessionSums = p.sessionHistory.map(sess => sess.games.reduce((acc,gm) => { const me = gm.players.find(x=>x.id===p.id); return acc + (me?me.point:0); }, 0));
       });
       window.playerData = pd;
     }
 
     function renderTable() {
-      const tbody = document.querySelector("#statsTable tbody");
-      tbody.innerHTML = "";
-      Object.values(window.playerData).forEach(p=>{
-        const avgRank  = (p.totalRank / p.games).toFixed(2);
-        const avgPoint = (p.totalPoint / p.games).toFixed(1);
-        const topRate  = ((p.tops / p.games) * 100).toFixed(1) + "%";
-        const twoRate  = (((p.tops + p.seconds) / p.games) * 100).toFixed(1) + "%";
-        const avoidLast= (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1)+ "%";
+      const tbody = document.querySelector("#statsTable tbody"); tbody.innerHTML = '';
+      Object.values(window.playerData).forEach(p => {
+        const avgRaw    = p.totalPoint / p.games;
+        const avgRankPt = p.totalRankPoint / p.games;
+        const combined  = avgRaw + avgRankPt;
+        const avgFinal  = (30000 + combined * 1000).toFixed(0);
+        const avgRank   = (p.totalRank / p.games).toFixed(2);
+        const topRate   = ((p.tops / p.games) * 100).toFixed(1) + "%";
+        const twoRate   = (((p.tops + p.seconds) / p.games) * 100).toFixed(1) + "%";
+        const avoidLast = (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1) + "%";
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><span class="clickable-name" data-id="${p.id}">${p.name}</span></td>
-          <td>${p.games}</td>
-          <td>${p.totalPoint>=0?"+":""}${p.totalPoint.toFixed(1)}</td>
-          <td>${p.tops}</td>
-          <td>${p.seconds}</td>
-          <td>${p.thirds}</td>
-          <td>${p.fourths}</td>
-          <td>${topRate}</td>
-          <td>${twoRate}</td>
-          <td>${avoidLast}</td>
-          <td>${avgRank}</td>
-          <td>${avgPoint}</td>
-        `;
+        tr.innerHTML =
+          `<td><span class="clickable-name" data-id="${p.id}">${p.name}</span></td>` +
+          `<td>${p.games}</td>` +
+          `<td>${p.totalPoint>=0?'+':''}${p.totalPoint.toFixed(1)}</td>` +
+          `<td>${p.tops}</td><td>${p.seconds}</td><td>${p.thirds}</td><td>${p.fourths}</td>` +
+          `<td>${topRate}</td><td>${twoRate}</td><td>${avoidLast}</td>` +
+          `<td>${avgRank}</td><td>${avgFinal}</td>`;
         tbody.appendChild(tr);
       });
       applyHighlighting();
-      document.querySelectorAll(".clickable-name").forEach(el=>el.addEventListener("click",()=>viewPlayerDetail(el.dataset.id)));
-      const first = Object.keys(window.playerData)[0]; if(first) viewPlayerDetail(first);
+      document.querySelectorAll(".clickable-name").forEach(el => el.addEventListener("click", () => viewPlayerDetail(el.dataset.id)));
+      const firstId = Object.keys(window.playerData)[0]; if (firstId) viewPlayerDetail(firstId);
     }
 
     function applyHighlighting() {
-      const table = document.getElementById("statsTable");
-      const rows  = Array.from(table.querySelectorAll("tbody tr"));
-      const nCols = table.rows[0].cells.length;
-      for (let c=1; c<nCols; c++) {
+      const table = document.getElementById("statsTable"), rows = Array.from(table.querySelectorAll("tbody tr"));
+      for (let c = 1; c < table.rows[0].cells.length; c++) {
         let max=-Infinity, min=Infinity;
-        rows.forEach(r=>{const v=parseFloat(r.cells[c].textContent); if(!isNaN(v)){max=Math.max(max,v); min=Math.min(min,v);}});
-        rows.forEach(r=>{
-          const cell = r.cells[c]; const v=parseFloat(cell.textContent);
-          cell.classList.remove("highlight-max","highlight-min");
-          const hdr = table.rows[0].cells[c].textContent.trim();
-          if(!isNaN(v)){
-            if(hdr==="平均着順"){ if(v===min) cell.classList.add("highlight-max"); if(v===max) cell.classList.add("highlight-min"); }
-            else { if(v===max) cell.classList.add("highlight-max"); if(v===min) cell.classList.add("highlight-min"); }
-          }
-        });
+        rows.forEach(r => { const v=parseFloat(r.cells[c].textContent); if(!isNaN(v)){max=Math.max(max,v);min=Math.min(min,v);} });
+        rows.forEach(r => { const cell=r.cells[c], v=parseFloat(cell.textContent), h=table.rows[0].cells[c].textContent.trim(); cell.classList.remove("highlight-max","highlight-min"); if(!isNaN(v)){ if(h==="平均着順"){ if(v===min)cell.classList.add("highlight-max"); if(v===max)cell.classList.add("highlight-min"); } else { if(v===max)cell.classList.add("highlight-max"); if(v===min)cell.classList.add("highlight-min"); } } });
       }
     }
 
     window.viewPlayerDetail = function(pid) {
-      const p = window.playerData[pid]; if(!p) return;
-      const div = document.getElementById("playerDetail"); div.innerHTML = "";
-      const avgPoint = (p.totalPoint/p.games).toFixed(1);
-      const avgRank  = (p.totalRank/p.games).toFixed(2);
-      const topRate  = ((p.tops/p.games)*100).toFixed(1);
-      const avoidLast= (((p.tops+p.seconds+p.thirds)/p.games)*100).toFixed(1);
-      const maxPt    = Math.max(...p.pointHistory).toFixed(1);
-      const minPt    = Math.min(...p.pointHistory).toFixed(1);
-      const maxIdx   = p.sessionSums.indexOf(Math.max(...p.sessionSums));
-      const minIdx   = p.sessionSums.indexOf(Math.min(...p.sessionSums));
-      const maxSes   = p.sessionSums.length&&maxIdx!==-1?`${p.sessionSums[maxIdx].toFixed(1)} pt (${p.sessionHistory[maxIdx].title})`:"-";
-      const minSes   = p.sessionSums.length&&minIdx!==-1?`${p.sessionSums[minIdx].toFixed(1)} pt (${p.sessionHistory[minIdx].title})`:"-";
+      const p = window.playerData[pid]; if (!p) return;
+      const div = document.getElementById("playerDetail"); div.innerHTML = '';
+      const avgRaw    = (p.totalPoint / p.games).toFixed(1);
+      const avgRankPt = (p.totalRankPoint / p.games).toFixed(1);
+      const avgFinal  = (30000 + (parseFloat(avgRaw)+parseFloat(avgRankPt)) * 1000).toFixed(0);
+      const avgRank   = (p.totalRank / p.games).toFixed(2);
+      const topRate   = ((p.tops / p.games) * 100).toFixed(1);
+      const avoidLast = (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1);
+      const maxPt     = Math.max(...p.pointHistory).toFixed(1);
+      const minPt     = Math.min(...p.pointHistory).toFixed(1);
+      const maxIdx    = p.sessionSums.indexOf(Math.max(...p.sessionSums));
+      const minIdx    = p.sessionSums.indexOf(Math.min(...p.sessionSums));
+      const maxText   = p.sessionSums.length&&maxIdx!==-1?`${p.sessionSums[maxIdx].toFixed(1)} pt ( ${p.sessionHistory[maxIdx].title} )` : '-';
+      const minText   = p.sessionSums.length&&minIdx!==-1?`${p.sessionSums[minIdx].toFixed(1)} pt ( ${p.sessionHistory[minIdx].title} )` : '-';
       div.innerHTML = `
         <div class="player-detail">
           <h2>${p.name} の成績詳細</h2>
-          <p>🀄 対局数：${p.games} 回<br>🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>📈 平均ポイント：${avgPoint} pt<br>🧮 平均着順：${avgRank} 位<br>👑 トップ率：${topRate}%<br>🚫 ラス回避率：${avoidLast}%<br>🔺 最大獲得pt：${maxPt} pt<br>🔻 最小獲得pt：${minPt} pt<br>📊 最高成績：${maxSes}<br>📉 最低成績：${minSes}<br></p>
+          <p>🀄 対局数：${p.games} 回<br>
+             🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>
+             📈 平均差分：${avgRaw} pt<br>
+             🏅 平均順位点：${avgRankPt} pt<br>
+             🎯 終局時平均点：${avgFinal} pt<br>
+             🧮 平均着順：${avgRank} 位<br>
+             👑 トップ率：${topRate}%<br>
+             🚫 ラス回避率：${avoidLast}%<br>
+             🔺 最大差分：${maxPt} pt<br>
+             🔻 最小差分：${minPt} pt<br>
+             📊 最高1セット：${maxText}<br>
+             📉 最低1セット：${minText}
+          </p>
           <canvas id="pointChart"></canvas>
           <div class="opponent-section">
-            <label>対戦相手を選択：
-              <select id="opponentSelect">
-                <option value="">--選択してください--</option>
-                ${Object.keys(window.playerData[pid].vs).sort().map(opp=>`<option value="${opp}">${playersMap[opp]||opp}</option>`).join('')}
-              </select>
-            </label>
+            <label>対戦相手を選択：<select id="opponentSelect"><option value="">--選択--</option>${Object.keys(p.vs).sort().map(opp=>`<option value="${opp}">${playersMap[opp]||opp}</option>`).join('')}</select></label>
             <div id="opponentStats"></div>
           </div>
         </div>
       `;
       drawPointGraph(p);
       document.getElementById("opponentSelect").addEventListener("change", e => {
-        const vsData = p.vs[e.target.value];
-        document.getElementById("opponentStats").innerHTML="";
-        renderOpponentStats(vsData);
-        drawOpponentGraph(vsData, e.target.value);
+        const opp = e.target.value; const statsDiv = document.getElementById("opponentStats"); statsDiv.innerHTML='';
+        if (!opp || !p.vs[opp]) return;
+        const vs = p.vs[opp], winRate=(vs.wins/vs.games*100).toFixed(1), avgDiff=(vs.pointDiff/vs.games).toFixed(1);
+        statsDiv.innerHTML = `<p>同卓回数：${vs.games} 回<br>勝利回数：${vs.wins} 回 (${winRate}%)<br>平均点差：${avgDiff} pt</p>`;
       });
     };
 
     function drawPointGraph(p) {
+      // 古い対局から順に累積
       const cum = [];
-      p.pointHistory.reduce((acc,cur)=>{const next=acc+cur; cum.push(next.toFixed(1)); return next;},0);
-      const labels = cum.map((_,i)=>`#${i+1}`);
-      const ctx = document.getElementById("pointChart").getContext("2d");
-      new Chart(ctx, { type: "line", data: { labels, datasets:[{ label:"累積ポイント推移", data:cum, fill:false, tension:0.1 }]}, options:{responsive:true, scales:{x:{title:{display:true,text:"対局数"}}, y:{title:{display:true,text:"累積ポイント"}}}} });
-    }
+      p.pointHistory.reduce((acc, cur) => {
+        const next = acc + cur;
+        cum.push(next.toFixed(1));
+        return next;
+      }, 0);
+      const labels = cum.map((_, i) => `#${i+1}`);
 
-    // 以下、対戦相手グラフと統計関数（drawOpponentGraph, renderOpponentStats）を追加
-    function renderOpponentStats(vsData) {
-      const div = document.getElementById("opponentStats");
-      if (!vsData) return;
-      const total = vsData.games;
-      const winRate = ((vsData.wins/total)*100).toFixed(1) + "%";
-      const avgDiff = (vsData.pointDiff/total).toFixed(1);
-      div.insertAdjacentHTML("afterbegin", `<p>対戦回数：${total}回<br>勝率：${winRate}<br>平均得失点：${avgDiff} pt</p>`);
-    }
-    function drawOpponentGraph(vsData, oppId) {
-      if (!vsData) return;
-      const diffs = vsData.pointDiffHistory || [];
-      const cum = [];
-      diffs.reduce((acc,cur)=>{const n=acc+cur; cum.push(n.toFixed(1)); return n;},0);
-      const labels = cum.map((_,i)=>`対戦${i+1}`);
-      if (window.oppChart) window.oppChart.destroy();
-      let canvas = document.getElementById("pointChartOpponent");
-      if (!canvas) {
-        document.getElementById("opponentStats").innerHTML += `<canvas id="pointChartOpponent"></canvas>`;
-        canvas = document.getElementById("pointChartOpponent");
-      }
-      const ctx = canvas.getContext("2d");
-      window.oppChart = new Chart(ctx, { type:"line", data:{ labels, datasets:[{ label:`${playersMap[oppId]||oppId} との累積得失点`, data:cum, fill:false, tension:0.1 }]}, options:{responsive:true, scales:{x:{title:{display:true,text:"対戦回"}}, y:{title:{display:true,text:"累積得失点"}}}} });
+      const ctx = document.getElementById("pointChart").getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: { labels, datasets: [{ label: "累積ポイント推移", data: cum, fill: false, tension: 0.1 }] },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "対局数" } },
+            y: { title: { display: true, text: "累積ポイント" } }
+          }
+        }
+      });
     }
   </script>
 </body>
