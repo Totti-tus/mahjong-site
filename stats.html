@@ -280,32 +280,34 @@
       const tbody = document.querySelector("#statsTable tbody");
       tbody.innerHTML = "";
       Object.values(window.playerData).forEach(p => {
-        const avgRaw = p.totalPoint / p.games;
-        const avgRankPt = p.totalRankPoint / p.games;
-        const combined = avgRaw + avgRankPt;
-        const avgFinal = (30000 + combined * 1000).toFixed(0);
-        const avgRank = (p.totalRank / p.games).toFixed(2);
-        const topRate = ((p.tops / p.games) * 100).toFixed(1) + "%";
-        const twoRate = (((p.tops + p.seconds) / p.games) * 100).toFixed(1) + "%";
-        const avoidLast = (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1) + "%";
+      // 修正：合計ポイントから着順ポイント合計を引いてゲーム数で割る
+       const avgDiffScore = (p.totalPoint - p.totalRankPoint) / p.games;
+       // それを1000倍して25,000に足す
+       const avgFinal = (25000 + avgDiffScore * 1000).toFixed(0);
+       
+       const avgRank = (p.totalRank / p.games).toFixed(2);
+       const topRate = ((p.tops / p.games) * 100).toFixed(1) + "%";
+       const twoRate = (((p.tops + p.seconds) / p.games) * 100).toFixed(1) + "%";
+       const avoidLast= (((p.tops + p.seconds + p.thirds) / p.games) * 100).toFixed(1) + "%";
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><span class="clickable-name" data-id="${p.id}">${p.name}</span></td>
-          <td>${p.games}</td>
-          <td>${p.totalPoint >= 0 ? '+' : ''}${p.totalPoint.toFixed(1)}</td>
-          <td>${p.tops}</td>
-          <td>${p.seconds}</td>
-          <td>${p.thirds}</td>
-          <td>${p.fourths}</td>
-          <td>${topRate}</td>
-          <td>${twoRate}</td>
-          <td>${avoidLast}</td>
-          <td>${avgRank}</td>
-          <td>${avgFinal}</td>
-        `;
-        tbody.appendChild(tr);
+       const tr = document.createElement("tr");
+       tr.innerHTML = `
+        <td><span class="clickable-name" data-id="${p.id}">${p.name}</span></td>
+        <td>${p.games}</td>
+        <td>${p.totalPoint >= 0 ? '+' : ''}${p.totalPoint.toFixed(1)}</td>
+        <td>${p.tops}</td>
+        <td>${p.seconds}</td>
+        <td>${p.thirds}</td>
+        <td>${p.fourths}</td>
+        <td>${topRate}</td>
+        <td>${twoRate}</td>
+        <td>${avoidLast}</td>
+        <td>${avgRank}</td>
+        <td>${avgFinal}</td>  <!-- 修正したこの列 -->
+       `;
+       tbody.appendChild(tr);
       });
+
       applyHighlighting();
       // 名称クリックで詳細表示
       document.querySelectorAll(".clickable-name").forEach(el => {
