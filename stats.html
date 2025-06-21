@@ -282,8 +282,8 @@
       Object.values(window.playerData).forEach(p => {
       // 修正：合計ポイントから着順ポイント合計を引いてゲーム数で割る
        const avgDiffScore = (p.totalPoint - p.totalRankPoint) / p.games;
-       // それを1000倍して25,000に足す
-       const avgFinal = (25000 + avgDiffScore * 1000).toFixed(0);
+       // それを1000倍して30,000に足す
+       const avgFinal = (30000 + avgDiffScore * 1000).toFixed(0);
        
        const avgRank = (p.totalRank / p.games).toFixed(2);
        const topRate = ((p.tops / p.games) * 100).toFixed(1) + "%";
