@@ -127,7 +127,7 @@
           <th>連対率</th>
           <th>ラス回避率</th>
           <th>平均着順</th>
-          <th>平均点</th>
+          <th>終局時平均得点</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -372,14 +372,14 @@
             🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>
             📈 平均差分：${avgRaw} pt<br>
             🏅 平均順位点：${avgRankPt} pt<br>
-            🎯 終局時平均点：${avgFinal} pt<br>
+            🎯 終局時平均得点：${avgFinal} pt<br>
             🧮 平均着順：${avgRank} 位<br>
             👑 トップ率：${topRate}%<br>
             🚫 ラス回避率：${avoidLast}%<br>
-            🔺 最大差分：${maxPt} pt<br>
-            🔻 最小差分：${minPt} pt<br>
-            📊 最高1セット：${maxText}<br>
-            📉 最低1セット：${minText}
+            🔺 1半荘での最高pt：${maxPt} pt<br>
+            🔻 1半荘での最低pt：${minPt} pt<br>
+            📊 最高1セットpt：${maxText}<br>
+            📉 最低1セットpt：${minText}
           </p>
           <canvas id="pointChart"></canvas>
           <div class="opponent-section">
