@@ -185,6 +185,10 @@
     alert('保存しました');
     // プレイヤー選択を元に戻す
     document.querySelectorAll('.player-row select').forEach((sel, i) => { sel.value = selectedIds[i]; });
+    // 点数入力欄をクリア
+    document.querySelectorAll('.player-row input').forEach(inp => { inp.value = ''; });
+    // 合計表示を更新
+    updatePointSum();
 }
 
 // saveRecordをグローバルに公開
