@@ -50,24 +50,17 @@
     import { getFirestore, collection, onSnapshot, doc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    // --- Firebase 設定を置き換えてください ---
+    // Firebase 設定 (他ページと同様に実際の設定値をここに)
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+      projectId: "mahjong-app-2e2e9",
+      storageBucket: "mahjong-app-2e2e9.appspot.com",
+      messagingSenderId: "440425002404",
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
     };
 
-    // 設定チェック
-    const container = document.getElementById('historyContainer');
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') {
-      container.innerHTML = '<p class="message">Firebase 設定が未完了です。firebaseConfig を置き換えてください。</p>';
-      console.error('Firebase config missing');
-      throw new Error('Firebase config missing');
-    }
-
+    // 初期化
     initializeApp(firebaseConfig);
     const db = getFirestore();
     signInAnonymously(getAuth()).catch(console.error);
@@ -81,18 +74,20 @@
     }
 
     function render() {
+      const container = document.getElementById('historyContainer');
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
 
+      // ゲーム単位で日付フィルタ、ソート
       const sessionsToShow = allSessions
-        .map(session => ({
-          id: session.id,
-          title: session.title,
-          games: session.games
+        .map(s => ({
+          id: s.id,
+          title: s.title,
+          games: s.games
             .filter(g => (!start || g.date >= start) && (!end || g.date <= end))
             .sort((a, b) => a.date.localeCompare(b.date))
         }))
-        .filter(session => session.games.length > 0)
+        .filter(s => s.games.length)
         .sort((a, b) => b.title.localeCompare(a.title));
 
       if (!sessionsToShow.length) {
@@ -102,14 +97,13 @@
 
       container.innerHTML = '';
       sessionsToShow.forEach(session => {
-        const details = document.createElement('details');
-        details.className = 'session';
+        const details = document.createElement('details'); details.className = 'session';
         const summaryPoints = session.games.reduce((acc, g) => {
-          g.players.forEach(p => { acc[p.id] = (acc[p.id] || 0) + p.point; });
+          g.players.forEach(p => acc[p.id] = (acc[p.id]||0) + p.point);
           return acc;
         }, {});
         const summaryText = Object.entries(summaryPoints)
-          .map(([id, pt]) => `${playersMap[id] || id}: ${pt >= 0 ? '+' : ''}${pt.toFixed(1)}pt`)
+          .map(([id, pt]) => `${playersMap[id]||id}: ${pt>=0?'+':''}${pt.toFixed(1)}pt`)
           .join('\n');
 
         details.innerHTML = `
@@ -121,13 +115,11 @@
             <table class="game-table">
               <thead><tr><th>日付</th><th>結果</th><th>操作</th></tr></thead>
               <tbody>
-                ${session.games.map((g, i) => `
-                  <tr>
-                    <td>${g.date}</td>
-                    <td>${g.players.map(p => `${playersMap[p.id] || p.id} (${p.point >= 0 ? '+' : ''}${p.point})`).join(' / ')}</td>
-                    <td><button class="delete-game-btn" data-sid="${session.id}" data-idx="${i}">削除</button></td>
-                  </tr>
-                `).join('')}
+                ${session.games.map((g,i) =>
+                  `<tr><td>${g.date}</td>`+
+                  `<td>${g.players.map(p=>`${playersMap[p.id]||p.id} (${p.point>=0?'+':''}${p.point})`).join(' / ')}</td>`+
+                  `<td><button class="delete-game-btn" data-sid="${session.id}" data-idx="${i}">削除</button></td></tr>`
+                ).join('')}
               </tbody>
             </table>
             <form class="add-game-form" data-sid="${session.id}">
@@ -140,6 +132,7 @@
         container.appendChild(details);
       });
 
+      // 各種イベント
       document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick = deleteGame);
       document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit = addGame);
     }
@@ -150,26 +143,25 @@
       const idx = +e.target.dataset.idx;
       const session = allSessions.find(s => s.id === sid);
       session.games.splice(idx, 1);
-      updateDoc(doc(db, 'sessions', sid), { games: session.games });
+      updateDoc(doc(db,'sessions',sid),{ games: session.games });
     }
 
     function addGame(e) {
       e.preventDefault();
-      const form = e.target;
-      const sid = form.dataset.sid;
-      const date = form.date.value;
-      const players = form.players.value.split(',').map(x => { const [id, pt] = x.split(':'); return { id, point: parseFloat(pt) }; });
-      const session = allSessions.find(s => s.id === sid);
+      const f = e.target;
+      const sid = f.dataset.sid;
+      const date = f.date.value;
+      const players = f.players.value.split(',').map(x=>{const [id,pt]=x.split(':');return{id,point:parseFloat(pt)}});
+      const session = allSessions.find(s=>s.id===sid);
       session.games.push({ date, players });
-      updateDoc(doc(db, 'sessions', sid), { games: session.games });
-      form.reset();
+      updateDoc(doc(db,'sessions',sid),{ games: session.games });
+      f.reset();
     }
 
-    onSnapshot(collection(db, 'sessions'), snap => {
-      allSessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    onSnapshot(collection(db,'sessions'), snap => {
+      allSessions = snap.docs.map(d=>({ id:d.id, ...d.data() }));
       render();
-    }, err => { console.error(err); container.innerHTML = '<p class="message">取得エラー</p>'; });
-
+    });
     document.getElementById('startDate').addEventListener('change', render);
     document.getElementById('endDate').addEventListener('change', render);
     loadPlayers();
