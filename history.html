@@ -18,7 +18,7 @@
     summary.session-header::before { content: "▶"; margin-right: 8px; transition: transform 0.2s; }
     details[open] summary.session-header::before { content: "▼"; }
     summary h3 { margin: 0; font-size: 18px; }
-    .summary-box { background: #e0f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; white-space: pre-wrap; }
+    .summary-box { background: #e0f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
     .details-content { display: none; padding: 0 16px 16px; }
     details[open] .details-content { display: block; }
     .game-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
@@ -76,6 +76,7 @@
       const container = document.getElementById('historyContainer');
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
+
       const sessionsToShow = allSessions
         .map(s => ({
           id: s.id,
@@ -94,57 +95,95 @@
       container.innerHTML = '';
 
       sessionsToShow.forEach(session => {
-        // ヘッダーとなる参加者順
-        const participantIds = playerList.map(p => p.id).filter(id => session.games.some(g => g.players.some(pl => pl.id === id)));
-        // 合計
-        const summaryPoints = {};
-        participantIds.forEach(id => summaryPoints[id] = 0);
-        session.games.forEach(g => g.players.forEach(p => summaryPoints[p.id] += p.point));
+        // 参加者ID抽出
+        const participantIds = playerList
+          .map(p => p.id)
+          .filter(id => session.games.some(g => g.players.some(pl => pl.id === id)));
+        // 合計点計算
+        const sumPts = {};
+        participantIds.forEach(id => sumPts[id] = 0);
+        session.games.forEach(g => g.players.forEach(p => sumPts[p.id] += p.point));
 
-        const details = document.createElement('details'); details.className = 'session';
-        let tableHtml = `<table class="game-table">
-          <thead>
-            <tr><th>回数</th>`;
-        participantIds.forEach(id => tableHtml += `<th colspan="2">${playersMap[id]}</th>`);
-        tableHtml += `</tr><tr><th></th>`;
-        participantIds.forEach(_ => tableHtml += `<th>＋</th><th>－</th>`);
-        tableHtml += `</tr></thead><tbody>`;
+        // テーブル作成
+        let html = '<details class="session">';
+        html += '<summary class="session-header"><h3>' + session.title + '</h3><div class="summary-box">クリックして展開</div></summary>';
+        html += '<div class="details-content"><table class="game-table"><thead><tr><th>回数</th>';
+        participantIds.forEach(id => html += '<th colspan="2">' + playersMap[id] + '</th>');
+        html += '</tr><tr><th></th>';
+        participantIds.forEach(_ => html += '<th>＋</th><th>－</th>');
+        html += '</tr></thead><tbody>';
 
-        session.games.forEach((g,i) => {
-          tableHtml += `<tr><td>${i+1}</td>`;
+        session.games.forEach((g, i) => {
+          html += '<tr><td>' + (i+1) + '</td>';
           participantIds.forEach(id => {
             const pl = g.players.find(p => p.id === id);
-            const plus = pl && pl.point > 0 ? `+${pl.point}` : '';
-            const minus = pl && pl.point < 0 ? pl.point : '';
-            tableHtml += `<td>${plus}</td><td>${minus}</td>`;
+            const plus = pl && pl.point > 0 ? '+' + pl.point.toFixed(1) : '';
+            const minus = pl && pl.point < 0 ? pl.point.toFixed(1) : '';
+            html += '<td>' + plus + '</td><td>' + minus + '</td>';
           });
-          tableHtml += `</tr>`;
+          html += '</tr>';
         });
         // 合計行
-        tableHtml += `<tr><th>合計</th>`;
+        html += '<tr><th>合計</th>';
         participantIds.forEach(id => {
-          const pt = summaryPoints[id].toFixed(1);
-          const plus = summaryPoints[id] > 0 ? `+${pt}` : '';
-          const minus = summaryPoints[id] < 0 ? pt : '';
-          tableHtml += `<td>${plus}</td><td>${minus}</td>`;
+          const val = sumPts[id].toFixed(1);
+          const plus = sumPts[id] > 0 ? '+' + val : '';
+          const minus = sumPts[id] < 0 ? val : '';
+          html += '<td>' + plus + '</td><td>' + minus + '</td>';
         });
-        tableHtml += `</tr></tbody></table>`;
+        html += '</tr></tbody></table>';
 
-        details.innerHTML = `
-          <summary class="session-header">
-            <h3>${session.title}</h3>
-            <div class="summary-box">クリックして展開</div>
-          </summary>
-          <div class="details-content">
-            ${tableHtml}
-          </div>`;
-        container.appendChild(details);
+        // 追加フォーム
+        html += '<form class="add-game-form" data-sid="' + session.id + '">';
+        html += '<input type="date" name="date" required>';
+        participantIds.forEach((id, idx) => {
+          html += '<div class="player-entry">';
+          html += '<select name="player' + idx + '">';
+          playerList.forEach(pl => html += '<option value="' + pl.id + '">' + pl.name + '</option>');
+          html += '</select>';
+          html += '<input type="number" name="point' + idx + '" placeholder="点数" required>';
+          html += '</div>';
+        });
+        html += '<button type="submit" class="add-game-btn">半荘追加</button></form>';
+
+        html += '</div></details>';
+        container.insertAdjacentHTML('beforeend', html);
       });
+
+      // イベント登録
+      document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick = deleteGame);
+      document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit = addGame);
+    }
+
+    async function addGame(e) {
+      e.preventDefault();
+      const f = e.target;
+      const sid = f.dataset.sid;
+      const date = f.date.value;
+      const players = [];
+      // プレイヤー数は動的
+      [...f.elements].filter(el => el.name.startsWith('player')).forEach((sel, idx) => {
+        const id = sel.value;
+        const pt = parseFloat(f['point' + idx].value);
+        players.push({ id, point: pt });
+      });
+      const session = allSessions.find(s => s.id === sid);
+      session.games.push({ date, players });
+      await updateDoc(doc(db, 'sessions', sid), { games: session.games });
+      f.reset();
+    }
+
+    function deleteGame(e) {
+      if (!confirm('本当に削除しますか？')) return;
+      const sid = e.target.dataset.sid;
+      const idx = +e.target.dataset.idx;
+      const session = allSessions.find(s => s.id === sid);
+      session.games.splice(idx, 1);
+      updateDoc(doc(db, 'sessions', sid), { games: session.games });
     }
 
     onSnapshot(collection(db, 'sessions'), snap => {
-      allSessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      render();
+      allSessions = snap.docs.map(d => ({ id: d.id, ...d.data() })); render();
     });
     document.getElementById('startDate').addEventListener('change', render);
     document.getElementById('endDate').addEventListener('change', render);
