@@ -1,277 +1,234 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>成績登録</title>
-<style>
-  body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
-  h1 { text-align: center; }
-  .form-section, .history-section {
-    background: white; padding: 20px; max-width: 600px;
-    margin: 20px auto; border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  }
-  label, select, input[type="number"], input[type="date"] {
-    display: block; width: 100%; margin-bottom: 10px;
-    padding: 10px; font-size: 16px;
-    border-radius: 5px; border: 1px solid #ccc;
-  }
-  .main-button {
-    display: block; width: 100%; max-width: 300px;
-    margin: 10px auto; padding: 15px; font-size: 18px;
-    background-color: #007bff; color: white;
-    border: none; border-radius: 10px; cursor: pointer;
-  }
-  .main-button:hover { background-color: #0056b3; }
-  .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
-  .player-row select, .player-row input { flex: 1; }
-  .top-nav { text-align: center; margin-bottom: 20px; }
-  .sum-warning { font-weight: bold; margin: 10px 0; text-align: center; }
-  .positive { color: blue; }
-  .negative { color: red; }
-  .score-input { text-align: right; }
-  .history-section table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  .history-section th, .history-section td { border: 1px solid #ccc; padding: 8px; text-align: right; }
-  .history-section th { background-color: #007bff; color: white; text-align: center; }
-  .history-section tr:nth-child(even) { background-color: #f9f9f9; }
-  .history-section tr:hover { background-color: #f1f1f1; }
-  .history-section .money-row td { font-weight: bold; background-color: #e8f5e9; color: #2e7d32; }
-  .rate-input-wrapper { display: flex; align-items: center; gap: 8px; }
-  .rate-input-wrapper input { width: 100px; }
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>成績登録</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
+    h1 { text-align: center; }
+    .form-section, .history-section {
+      background: white; padding: 20px; max-width: 600px;
+      margin: 20px auto; border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    label, select, input[type="number"], input[type="date"] {
+      display: block; width: 100%; margin-bottom: 10px;
+      padding: 10px; font-size: 16px;
+      border-radius: 5px; border: 1px solid #ccc;
+    }
+    .main-button {
+      display: block; width: 100%; max-width: 300px;
+      margin: 10px auto; padding: 15px; font-size: 18px;
+      background-color: #007bff; color: white;
+      border: none; border-radius: 10px; cursor: pointer;
+    }
+    .main-button:hover { background-color: #0056b3; }
+    .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .player-row select, .player-row input { flex: 1; }
+    .score-input { text-align: right; }
+    .sum-warning { font-weight: bold; margin: 10px 0; text-align: center; }
+    .positive { color: blue; }
+    .negative { color: red; }
+    .history-section table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .history-section th, .history-section td { border: 1px solid #ccc; padding: 8px; text-align: right; }
+    .history-section th { background-color: #007bff; color: white; text-align: center; }
+    .history-section tr:nth-child(even) { background-color: #f9f9f9; }
+    .history-section tr:hover { background-color: #f1f1f1; }
+    .history-section .money-row td { font-weight: bold; background-color: #e8f5e9; color: #2e7d32; }
+    .rate-input-wrapper { display: flex; align-items: center; gap: 8px; }
+    .rate-input-wrapper input { width: 100px; }
+  </style>
 </head>
 <body>
-<h1>成績登録</h1>
-<div class="top-nav">
-  <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
-  <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
-</div>
-<div class="form-section">
-  <label>日付：<input id="gameDate" type="date"/></label>
-  <div id="playersContainer"></div>
-  <div class="sum-warning" id="pointSumDisplay"></div>
-  <button class="main-button" onclick="saveRecord()">保存</button>
-</div>
-<div class="form-section rate-box">
-  <label for="rateInput">レート（1ポイントあたり）：</label>
-  <div class="rate-input-wrapper">
-    <input id="rateInput" oninput="updateSessionTable()" type="number" value="50"/>
-    <span>コイン</span>
+  <h1>成績登録</h1>
+  <div class="top-nav">
+    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+    <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
   </div>
-</div>
-<div class="history-section">
-  <h2>この回の対局履歴</h2>
-  <div id="sessionHistory">履歴はまだありません。</div>
-</div>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, collection, addDoc, updateDoc, getDocs, getDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <div class="form-section">
+    <label>日付：<input id="gameDate" type="date"/></label>
+    <div id="playersContainer"></div>
+    <div class="sum-warning" id="pointSumDisplay"></div>
+    <button class="main-button" onclick="saveRecord()">保存</button>
+  </div>
+  <div class="form-section rate-box">
+    <label for="rateInput">レート（1ポイントあたり）：</label>
+    <div class="rate-input-wrapper">
+      <input id="rateInput" oninput="updateSessionTable()" type="number" value="50"/>
+      <span>コイン</span>
+    </div>
+  </div>
+  <div class="history-section">
+    <h2>この回の対局履歴</h2>
+    <div id="sessionHistory">履歴はまだありません。</div>
+  </div>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-    authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-    projectId: "mahjong-app-2e2e9",
-    storageBucket: "mahjong-app-2e2e9.appspot.com",
-    messagingSenderId: "440425002404",
-    appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
-  };
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, updateDoc, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db   = getFirestore(app);
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-  signInAnonymously(auth).catch(console.error);
-  onAuthStateChanged(auth, user => {});
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    signInAnonymously(auth).catch(console.error);
+    onAuthStateChanged(auth, user => user && console.log('Logged in as', user.uid));
 
-  const playersRef  = collection(db, 'players');
-  const sessionsRef = collection(db, 'sessions');
+    const playersRef = collection(db, 'players');
+    const sessionsRef = collection(db, 'sessions');
 
-  let currentSessionId = localStorage.getItem('currentSessionId') || null;
-  let playerList       = [];
-  let lastGames        = [];
+    let currentSessionId = localStorage.getItem('currentSessionId') || null;
+    let playerList = [];
+    let lastGames = [];
 
-  // 点数→ポイント変換：1位にオカ+20, ウマ30/10/-10/-30
-  function computePoint(score, rank) {
-    const base = (score - 30000) / 1000;
-    const oka  = rank === 1 ? 20 : 0;
-    const uma  = {1:30, 2:10, 3:-10, 4:-30};
-    return base + oka + (uma[rank] || 0);
-  }
-
-  // プレイヤー名選択をローカルに保存
-  function saveSelections() {
-    const selections = Array.from(document.querySelectorAll('.player-row select')).map(sel => sel.value);
-    localStorage.setItem('playerSelections', JSON.stringify(selections));
-  };
-    return base + oka + (uma[rank] || 0);
-  }
-
-  // プレイヤー入力欄を生成
-  async function loadPlayers() {
-    // 以前の選択を復元
-    const savedSelections = JSON.parse(localStorage.getItem('playerSelections') || '[]');
-    const snap = await getDocs(playersRef);
-    playerList = snap.docs.map(d => d.data());
-    const container = document.getElementById('playersContainer');
-    container.innerHTML = '';
-    for (let i = 0; i < 4; i++) {
-      const row = document.createElement('div'); row.className = 'player-row';
-      const select = document.createElement('select');
-      select.innerHTML = `<option disabled selected>選択してください</option>` +
-        playerList.map(p => `<option value=\"${p.id}\">${p.name}</option>`).join('');
-      // 前回の選択を適用
-      if (savedSelections[i]) select.value = savedSelections[i];
-      // 選択変更時に保存
-      select.addEventListener('change', saveSelections);
-      const row = document.createElement('div'); row.className = 'player-row';
-      const select = document.createElement('select');
-      select.innerHTML = `<option disabled selected>選択してください</option>` +
-        playerList.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-      const input = document.createElement('input'); input.type = 'number'; input.placeholder = '点数'; input.className = 'score-input';
-      input.addEventListener('input', () => { updatePointSum(); updateInputColor(input); });
-      row.append(select, input);
-      container.append(row);
+    // スコア→ポイント変換: 1位にオカ+20、ウマ30/10/-10/-30
+    function computePoint(score, rank) {
+      const base = (score - 30000) / 1000;
+      const oka = rank === 1 ? 20 : 0;
+      const uma = {1:30, 2:10, 3:-10, 4:-30};
+      return base + oka + (uma[rank] || 0);
     }
-  }
 
-  // 合計スコア＆ポイントを更新
-  function updatePointSum() {
-    const rows = document.querySelectorAll('.player-row');
-    let sumScore = 0;
-    const arr = Array.from(rows).map(r => {
-      const score = parseFloat(r.querySelector('input').value) || 0;
-      sumScore += score;
-      return { row: r, score };
-    });
-    // 順位付け
-    const sorted = [...arr].sort((a, b) => b.score - a.score);
-    const rankMap = new Map(); sorted.forEach((x, i) => rankMap.set(x.row, i+1));
-    let sumPoint = 0;
-    arr.forEach(x => sumPoint += computePoint(x.score, rankMap.get(x.row)));
-    const disp = document.getElementById('pointSumDisplay');
-    disp.innerHTML = `合計スコア: ${sumScore} (基準 100000)<br>合計ポイント: ${sumPoint.toFixed(1)}`;
-    // スコア合計の色
-    if (sumScore !== 100000) {
-      disp.innerHTML = `<span style="color:red;">合計スコア: ${sumScore} (要100000)</span><br>` +
-                       `<span>合計ポイント: ${sumPoint.toFixed(1)}</span>`;
-    } else {
-      disp.innerHTML = `<span style="color:green;">合計スコア: ${sumScore} (OK)</span><br>` +
-                       `<span>合計ポイント: ${sumPoint.toFixed(1)}</span>`;
+    // 選択保存
+    function saveSelections() {
+      const sel = Array.from(document.querySelectorAll('.player-row select')).map(s => s.value);
+      localStorage.setItem('playerSelections', JSON.stringify(sel));
     }
-  }
 
-  function updateInputColor(input) {
-    const v = parseFloat(input.value);
-    input.classList.remove('positive','negative');
-    if (!isNaN(v)) input.classList.add(v<0?'negative':'positive');
-  }
+    // プレイヤー入力欄生成
+    async function loadPlayers() {
+      const saved = JSON.parse(localStorage.getItem('playerSelections') || '[]');
+      const snap = await getDocs(playersRef);
+      playerList = snap.docs.map(d => d.data());
+      const container = document.getElementById('playersContainer');
+      container.innerHTML = '';
+      for (let i = 0; i < 4; i++) {
+        const row = document.createElement('div'); row.className = 'player-row';
+        const select = document.createElement('select');
+        select.innerHTML = '<option disabled>選択してください</option>' +
+          playerList.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        if (saved[i]) select.value = saved[i];
+        select.addEventListener('change', saveSelections);
+        const input = document.createElement('input');
+        input.type = 'number'; input.placeholder = '点数'; input.className = 'score-input';
+        input.addEventListener('input', () => { updatePointSum(); updateInputColor(input); });
+        row.append(select, input);
+        container.append(row);
+      }
+    }
 
-  // 保存処理
-  async function saveRecord() {
-    // 現在の選択を保持
-    const selectedIds = Array.from(document.querySelectorAll('.player-row select')).map(sel => sel.value);
+    // 合計スコア＆ポイント表示
+    function updatePointSum() {
+      const rows = document.querySelectorAll('.player-row');
+      let sumScore = 0;
+      const arr = Array.from(rows).map(r => {
+        const s = parseFloat(r.querySelector('input').value) || 0;
+        sumScore += s; return {row: r, score: s};
+      });
+      const sorted = [...arr].sort((a, b) => b.score - a.score);
+      const rankMap = new Map(); sorted.forEach((x, i) => rankMap.set(x.row, i + 1));
+      let sumPoint = 0;
+      arr.forEach(x => sumPoint += computePoint(x.score, rankMap.get(x.row)));
+      const disp = document.getElementById('pointSumDisplay');
+      disp.innerHTML = `合計スコア: ${sumScore} /100000<br>合計ポイント: ${sumPoint.toFixed(1)}`;
+    }
 
-    if (!currentSessionId) return alert('先にセッションを開始してください');
-    const date = document.getElementById('gameDate').value;
-    const rows = document.querySelectorAll('.player-row');
-    // スコアと順位からポイント計算
-    const arr = Array.from(rows).map(r => ({ row: r, score: parseFloat(r.querySelector('input').value) || 0 }));
-    const sorted = [...arr].sort((a, b) => b.score - a.score);
-    const rankMap = new Map(); sorted.forEach((x, i) => rankMap.set(x.row, i + 1));
-    const players = arr.map(x => ({ id: x.row.querySelector('select').value, point: Number(computePoint(x.score, rankMap.get(x.row)).toFixed(1)) }));
-    // 合計チェック
-    const sumPt = players.reduce((a, p) => a + p.point, 0);
-    if (Math.abs(sumPt) > 0.001) return alert('ポイント合計が±0ではありません');
-    // Firestore 更新: lastGames を使って二重読み込み回避
-    const updatedGames = [...lastGames, { date, players }];
-    // players 配列更新
-    const existingIds = lastGames.length ? lastGames[0].players.map(p => p.id) : [];
-    const updatedPlayerSet = new Set([...existingIds, ...players.map(p => p.id)]);
-    const updatedPlayers = Array.from(updatedPlayerSet);
-    // ドキュメント更新
-    const ref = doc(db, 'sessions', currentSessionId);
-    await updateDoc(ref, {
-      games: updatedGames,
-      players: updatedPlayers
-    });
-    // ローカル更新・再描画
-    lastGames = updatedGames;
-    renderSessionHistory(updatedGames);
-    // 保存完了通知
-    alert('保存しました');
-    // プレイヤー選択を元に戻す
-    document.querySelectorAll('.player-row select').forEach((sel, i) => { sel.value = selectedIds[i]; });
-    // 点数入力欄をクリア
-    document.querySelectorAll('.player-row input').forEach(inp => { inp.value = ''; });
-    // 合計表示を更新
-    updatePointSum();
-}
+    function updateInputColor(input) {
+      const v = parseFloat(input.value);
+      input.classList.toggle('negative', v < 0);
+      input.classList.toggle('positive', v > 0);
+    }
 
-// saveRecordをグローバルに公開
-window.saveRecord = saveRecord;
+    // 保存処理
+    async function saveRecord() {
+      if (!currentSessionId) return alert('先にセッションを開始してください');
+      const date = document.getElementById('gameDate').value;
+      const rows = document.querySelectorAll('.player-row');
+      const list = Array.from(rows).map(r => ({row: r, id: r.querySelector('select').value, score: parseFloat(r.querySelector('input').value) || 0}));
+      const sorted = [...list].sort((a, b) => b.score - a.score);
+      const rankMap = new Map(); sorted.forEach((x, i) => rankMap.set(x.row, i + 1));
+      const players = list.map(x => ({ id: x.id, point: Number(computePoint(x.score, rankMap.get(x.row)).toFixed(1)) }));
+      const sumPt = players.reduce((a, p) => a + p.point, 0);
+      if (Math.abs(sumPt) > 0.001) return alert('ポイント合計が±0ではありません');
+      const updatedGames = [...lastGames, { date, players }];
+      const playerIds = Array.from(new Set([...lastGames.flatMap(g => g.players.map(p => p.id)), ...players.map(p => p.id)]));
+      const ref = doc(db, 'sessions', currentSessionId);
+      await updateDoc(ref, { games: updatedGames, players: playerIds });
+      lastGames = updatedGames;
+      renderSessionHistory(updatedGames);
+      alert('保存しました');
+      saveSelections();
+      rows.forEach(r => r.querySelector('input').value = '');
+      updatePointSum();
+    }
+    window.saveRecord = saveRecord;
 
-
-  // 新セッション開始
-  window.startNewSession = async function() {
-    const date = document.getElementById('gameDate').value;
-    if (!date) return alert('日付を選択してください');
-    const docRef = await addDoc(sessionsRef,{title:date,players:[],games:[]});
-    currentSessionId = docRef.id; localStorage.setItem('currentSessionId',currentSessionId);
-    alert('新しい回を開始しました'); renderSessionHistory([]);
-  };
-
-  // 履歴描画
-  function renderSessionHistory(games) {
-    lastGames = games;
-    const container = document.getElementById('sessionHistory');
-    if (!games.length) { container.innerHTML = '履歴はまだありません。'; return; }
-    const ids = [...new Set(games.flatMap(g=>g.players.map(p=>p.id)))];
-    const idToName = Object.fromEntries(playerList.map(p=>[p.id,p.name]));
-    let html = '<table><tr><th>日付</th>' + ids.map(id=>`<th>${idToName[id]}</th>`).join('') + '</tr>';
-    const totals = Object.fromEntries(ids.map(id=>[id,0]));
-    games.forEach(g => {
-      html += `<tr><td>${g.date}</td>${ids.map(id=>{
-        const pl = g.players.find(p=>p.id===id); if(pl) totals[id]+=pl.point;
-        const v = pl?pl.point:''; const c = pl?(pl.point<0?'red':'blue'):'';
-        return `<td style="color:${c}">${v}</td>`;
-      }).join('')}</tr>`;
-    });
-    // 合計行
-    html += '<tr class="money-row"><td>合計</td>' + ids.map(id=>{
-      const v=totals[id].toFixed(1); const c = totals[id]<0?'red':'blue';
-      return `<td style="color:${c}">${v}</td>`;
-    }).join('') + '</tr>';
-    // 換算行
-    const rate = parseFloat(document.getElementById('rateInput').value||0);
-    html += '<tr class="money-row"><td>換算</td>' + ids.map(id=>{
-      const coin=Math.round(totals[id]*rate); const c=coin<0?'red':'blue';
-      return `<td style="color:${c}">${coin} コイン</td>`;
-    }).join('') + '</tr>';
-    html += '</table>'; container.innerHTML = html;
-  }
-
-  window.updateSessionTable = () => { if (lastGames.length) renderSessionHistory(lastGames); };
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    // 日付初期化
-    document.getElementById('gameDate').value = new Date().toISOString().split('T')[0];
-    // プレイヤー一覧ロード
-    await loadPlayers();
-    // セッションがなければ自動作成
-    if (!currentSessionId) {
-      const initDate = document.getElementById('gameDate').value;
-      const docRef = await addDoc(sessionsRef, { title: initDate, players: [], games: [] });
+    // 新セッション開始
+    window.startNewSession = async function() {
+      const d = document.getElementById('gameDate').value;
+      if (!d) return alert('日付を選択してください');
+      const docRef = await addDoc(sessionsRef, { title: d, players: [], games: [] });
       currentSessionId = docRef.id;
       localStorage.setItem('currentSessionId', currentSessionId);
+      lastGames = [];
+      renderSessionHistory([]);
+    };
+
+    // 履歴描画
+    function renderSessionHistory(games) {
+      lastGames = games;
+      const container = document.getElementById('sessionHistory');
+      if (!games.length) { container.innerHTML = '履歴はまだありません。'; return; }
+      const ids = [...new Set(games.flatMap(g => g.players.map(p => p.id)))];
+      const idToName = Object.fromEntries(playerList.map(p => [p.id, p.name]));
+      let html = '<table><tr><th>日付</th>' + ids.map(id => `<th>${idToName[id]}</th>`).join('') + '</tr>';
+      const totals = Object.fromEntries(ids.map(id => [id, 0]));
+      games.forEach(g => {
+        html += `<tr><td>${g.date}</td>${ids.map(id => {
+          const pl = g.players.find(p => p.id === id);
+          if (pl) totals[id] += pl.point;
+          const v = pl ? pl.point : '';
+          const c = pl ? (pl.point < 0 ? 'red' : 'blue') : '';
+          return `<td style="color:${c}">${v}</td>`;
+        }).join('')}</tr>`;
+      });
+      html += '<tr class="money-row"><td>合計</td>' + ids.map(id => {
+        const v = totals[id].toFixed(1);
+        const c = totals[id] < 0 ? 'red' : 'blue';
+        return `<td style="color:${c}">${v}</td>`;
+      }).join('') + '</tr>';
+      const rate = parseFloat(document.getElementById('rateInput').value || 0);
+      html += '<tr class="money-row"><td>換算</td>' + ids.map(id => {
+        const coin = Math.round(totals[id] * rate);
+        const c = coin < 0 ? 'red' : 'blue';
+        return `<td style="color:${c}">${coin} コイン</td>`;
+      }).join('') + '</tr>';
+      html += '</table>';
+      container.innerHTML = html;
     }
-    // セッション履歴取得・表示
-    const sessionDoc = await getDoc(doc(db, 'sessions', currentSessionId));
-    if (sessionDoc.exists()) {
-      renderSessionHistory(sessionDoc.data().games);
-    }
-  });
-</script>
+    window.updateSessionTable = () => { if (lastGames.length) renderSessionHistory(lastGames); };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('gameDate').value = new Date().toISOString().split('T')[0];
+      await loadPlayers();
+      if (!currentSessionId) {
+        const docRef = await addDoc(sessionsRef, { title: document.getElementById('gameDate').value, players: [], games: [] });
+        currentSessionId = docRef.id;
+        localStorage.setItem('currentSessionId', currentSessionId);
+      }
+      const sessionSnap = await getDoc(doc(db, 'sessions', currentSessionId));
+      if (sessionSnap.exists()) renderSessionHistory(sessionSnap.data().games);
+    });
+  </script>
 </body>
 </html>
