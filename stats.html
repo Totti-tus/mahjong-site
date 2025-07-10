@@ -240,8 +240,14 @@
             const rankPt = rankPointMap[rank];
             const rawDiff = p.point - rankPt;
 
-            // とび判定
-            if (rawDiff <= -60) d.tobiCount++;
+            
+            // ゲームごとに
+            const diff = p.point - rankPt;
+             if (diff <= -60) {
+             // 飛びの基準は得点 <= -60 
+             d.tobiCount++;
+            }
+
 
             // 基本集計
             d.games++;
@@ -345,36 +351,36 @@
 
     // 最大/最小ハイライト
     function applyHighlighting() {
-      headers.forEach((header, ci) => {
-  // 各セルから比較用の数値を取り出す
-  const vals = rows.map(r => {
-    const cell = r.cells[ci];
-    if (["1位","2位","3位","4位"].includes(header)) {
-      // 小要素(<small>)の % 表示をパース
-      return parseFloat(cell.querySelector("small").textContent) || 0;
-    } else {
-      // それ以外はセルのテキストを数値化
-      return parseFloat(cell.textContent) || 0;
-    }
-  });
-  const max = Math.max(...vals);
-  const min = Math.min(...vals);
-
-  rows.forEach((r, i) => {
-    const cell = r.cells[ci];
-    const v = vals[i];
-    cell.classList.remove("highlight-max","highlight-min");
-    if (header === "平均着順") {
-      // 着順は「小さいほどよい」扱い
-      if (v === min) cell.classList.add("highlight-max");
-      if (v === max) cell.classList.add("highlight-min");
-    } else {
-      // その他は「大きいほどよい」
-      if (v === max) cell.classList.add("highlight-max");
-      if (v === min) cell.classList.add("highlight-min");
-    }
-  });
-});
+     headers.forEach((header, ci) => {
+      // 各セルから比較用の数値を取り出す
+      const vals = rows.map(r => {
+      const cell = r.cells[ci];
+       if (["1位","2位","3位","4位"].includes(header)) {
+        // 小要素(<small>)の % 表示をパース
+        return parseFloat(cell.querySelector("small").textContent) || 0;
+       } else {
+        // それ以外はセルのテキストを数値化
+        return parseFloat(cell.textContent) || 0;
+       }
+      });
+      const max = Math.max(...vals);
+      const min = Math.min(...vals);
+      
+      rows.forEach((r, i) => {
+       const cell = r.cells[ci];
+       const v = vals[i];
+       cell.classList.remove("highlight-max","highlight-min");
+        if (header === "平均着順") {
+         // 着順は「小さいほどよい」扱い
+         if (v === min) cell.classList.add("highlight-max");
+         if (v === max) cell.classList.add("highlight-min");
+        } else {
+         // その他は「大きいほどよい」
+         if (v === max) cell.classList.add("highlight-max");
+         if (v === min) cell.classList.add("highlight-min");
+        }
+      });
+     });
 
     }
 
