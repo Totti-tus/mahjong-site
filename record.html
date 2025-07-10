@@ -152,6 +152,9 @@
 
   // 保存処理
   async function saveRecord() {
+    // 現在の選択を保持
+    const selectedIds = Array.from(document.querySelectorAll('.player-row select')).map(sel => sel.value);
+
     if (!currentSessionId) return alert('先にセッションを開始してください');
     const date = document.getElementById('gameDate').value;
     const rows = document.querySelectorAll('.player-row');
@@ -178,7 +181,10 @@
     // ローカル更新・再描画
     lastGames = updatedGames;
     renderSessionHistory(updatedGames);
+    // 保存完了通知
     alert('保存しました');
+    // プレイヤー選択を元に戻す
+    document.querySelectorAll('.player-row select').forEach((sel, i) => { sel.value = selectedIds[i]; });
 }
 
 // saveRecordをグローバルに公開
