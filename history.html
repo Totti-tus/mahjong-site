@@ -95,31 +95,34 @@
       container.innerHTML = '';
 
       sessionsToShow.forEach(session => {
-        // 参加者ID抽出
-        const participantIds = playerList
-          .map(p => p.id)
-          .filter(id => session.games.some(g => g.players.some(pl => pl.id === id)));
-        // 合計点計算
+        // プレイヤー抽出
+        const participantIds = playerList.map(p => p.id).filter(id => session.games.some(g => g.players.some(pl => pl.id === id)));
+        // 合計点算出
         const sumPts = {};
         participantIds.forEach(id => sumPts[id] = 0);
         session.games.forEach(g => g.players.forEach(p => sumPts[p.id] += p.point));
+        // summaryText作成
+        const summaryText = participantIds.map(id => {
+          const pt = sumPts[id].toFixed(1);
+          return `${playersMap[id]||id}: ${pt>0?'+':''}${pt}`;
+        }).join('<br>');
 
-        // テーブル作成
+        // HTML構築
         let html = '<details class="session">';
-        html += '<summary class="session-header"><h3>' + session.title + '</h3><div class="summary-box">クリックして展開</div></summary>';
-        html += '<div class="details-content"><table class="game-table"><thead><tr><th>回数</th>';
-        participantIds.forEach(id => html += '<th colspan="2">' + playersMap[id] + '</th>');
+        html += `<summary class="session-header"><h3>${session.title}</h3><div class="summary-box">${summaryText}</div></summary>`;
+        html += '<div class="details-content">';
+        html += '<table class="game-table"><thead><tr><th>回数</th>';
+        participantIds.forEach(id => html += `<th colspan="2">${playersMap[id]}</th>`);
         html += '</tr><tr><th></th>';
         participantIds.forEach(_ => html += '<th>＋</th><th>－</th>');
         html += '</tr></thead><tbody>';
-
-        session.games.forEach((g, i) => {
-          html += '<tr><td>' + (i+1) + '</td>';
+        session.games.forEach((g,i) => {
+          html += `<tr><td>${i+1}</td>`;
           participantIds.forEach(id => {
-            const pl = g.players.find(p => p.id === id);
-            const plus = pl && pl.point > 0 ? '+' + pl.point.toFixed(1) : '';
-            const minus = pl && pl.point < 0 ? pl.point.toFixed(1) : '';
-            html += '<td>' + plus + '</td><td>' + minus + '</td>';
+            const pl = g.players.find(p => p.id===id);
+            const plus = pl && pl.point>0?`+${pl.point.toFixed(1)}`:'';
+            const minus = pl && pl.point<0?pl.point.toFixed(1):'';
+            html += `<td>${plus}</td><td>${minus}</td>`;
           });
           html += '</tr>';
         });
@@ -127,66 +130,46 @@
         html += '<tr><th>合計</th>';
         participantIds.forEach(id => {
           const val = sumPts[id].toFixed(1);
-          const plus = sumPts[id] > 0 ? '+' + val : '';
-          const minus = sumPts[id] < 0 ? val : '';
-          html += '<td>' + plus + '</td><td>' + minus + '</td>';
+          const plus = sumPts[id]>0?`+${val}`:'';
+          const minus = sumPts[id]<0?val:'';
+          html += `<td>${plus}</td><td>${minus}</td>`;
         });
         html += '</tr></tbody></table>';
-
         // 追加フォーム
-        html += '<form class="add-game-form" data-sid="' + session.id + '">';
-        html += '<input type="date" name="date" required>';
-        participantIds.forEach((id, idx) => {
+        html += `<form class="add-game-form" data-sid="${session.id}"><input type="date" name="date" required>`;
+        participantIds.forEach((id,idx) => {
           html += '<div class="player-entry">';
-          html += '<select name="player' + idx + '">';
-          playerList.forEach(pl => html += '<option value="' + pl.id + '">' + pl.name + '</option>');
+          html += `<select name="player${idx}">`;
+          playerList.forEach(pl => html += `<option value="${pl.id}">${pl.name}</option>`);
           html += '</select>';
-          html += '<input type="number" name="point' + idx + '" placeholder="点数" required>';
+          html += `<input type="number" name="point${idx}" placeholder="点数" required>`;
           html += '</div>';
         });
         html += '<button type="submit" class="add-game-btn">半荘追加</button></form>';
-
         html += '</div></details>';
         container.insertAdjacentHTML('beforeend', html);
       });
 
-      // イベント登録
-      document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick = deleteGame);
-      document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit = addGame);
+      document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit=addGame);
+      document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick=deleteGame);
     }
 
     async function addGame(e) {
-      e.preventDefault();
-      const f = e.target;
-      const sid = f.dataset.sid;
-      const date = f.date.value;
-      const players = [];
-      // プレイヤー数は動的
-      [...f.elements].filter(el => el.name.startsWith('player')).forEach((sel, idx) => {
-        const id = sel.value;
-        const pt = parseFloat(f['point' + idx].value);
-        players.push({ id, point: pt });
-      });
-      const session = allSessions.find(s => s.id === sid);
-      session.games.push({ date, players });
-      await updateDoc(doc(db, 'sessions', sid), { games: session.games });
-      f.reset();
+      e.preventDefault(); const f=e.target;
+      const sid=f.dataset.sid; const date=f.date.value;
+      const players=[];
+      [...f.elements].filter(el=>el.name.startsWith('player')).forEach((sel,idx)=>players.push({id:sel.value,point:parseFloat(f[`point${idx}`].value)}));
+      const session=allSessions.find(s=>s.id===sid);
+      session.games.push({date,players});
+      await updateDoc(doc(db,'sessions',sid),{games:session.games});
+      render();
     }
 
-    function deleteGame(e) {
-      if (!confirm('本当に削除しますか？')) return;
-      const sid = e.target.dataset.sid;
-      const idx = +e.target.dataset.idx;
-      const session = allSessions.find(s => s.id === sid);
-      session.games.splice(idx, 1);
-      updateDoc(doc(db, 'sessions', sid), { games: session.games });
-    }
+    function deleteGame(e){if(!confirm('本当に削除しますか？'))return;const sid=e.target.dataset.sid;const idx=+e.target.dataset.idx;const session=allSessions.find(s=>s.id===sid);session.games.splice(idx,1);updateDoc(doc(db,'sessions',sid),{games:session.games}).then(render);}
 
-    onSnapshot(collection(db, 'sessions'), snap => {
-      allSessions = snap.docs.map(d => ({ id: d.id, ...d.data() })); render();
-    });
-    document.getElementById('startDate').addEventListener('change', render);
-    document.getElementById('endDate').addEventListener('change', render);
+    onSnapshot(collection(db,'sessions'),snap=>{allSessions=snap.docs.map(d=>({id:d.id,...d.data()}));render();});
+    document.getElementById('startDate').addEventListener('change',render);
+    document.getElementById('endDate').addEventListener('change',render);
     loadPlayers();
   </script>
 </body>
