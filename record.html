@@ -155,21 +155,35 @@
     if (!currentSessionId) return alert('先にセッションを開始してください');
     const date = document.getElementById('gameDate').value;
     const rows = document.querySelectorAll('.player-row');
-    const arr = Array.from(rows).map(r => ({row:r,score:parseFloat(r.querySelector('input').value)||0}));
-    const sorted = [...arr].sort((a,b)=>b.score - a.score);
-    const rankMap = new Map(); sorted.forEach((x,i)=>rankMap.set(x.row,i+1));
-    const players = arr.map(x => ({id:x.row.querySelector('select').value, point: Number(computePoint(x.score, rankMap.get(x.row)).toFixed(1))}));
-    const sum = players.reduce((a,p)=>a+p.point,0);
-    if (Math.abs(sum)>0.001) return alert('ポイント合計が±0ではありません');
-    const ref = doc(db,'sessions',currentSessionId);
-    const snap = await getDoc(ref);
-    const data = snap.data();
+    // スコアと順位からポイント計算
+    const arr = Array.from(rows).map(r => ({ row: r, score: parseFloat(r.querySelector('input').value) || 0 }));
+    const sorted = [...arr].sort((a, b) => b.score - a.score);
+    const rankMap = new Map(); sorted.forEach((x, i) => rankMap.set(x.row, i + 1));
+    const players = arr.map(x => ({ id: x.row.querySelector('select').value, point: Number(computePoint(x.score, rankMap.get(x.row)).toFixed(1)) }));
+    // 合計チェック
+    const sumPt = players.reduce((a, p) => a + p.point, 0);
+    if (Math.abs(sumPt) > 0.001) return alert('ポイント合計が±0ではありません');
+    // Firestore 更新: lastGames を使って二重読み込み回避
+    const updatedGames = [...lastGames, { date, players }];
+    // players 配列更新
+    const existingIds = lastGames.length ? lastGames[0].players.map(p => p.id) : [];
+    const updatedPlayerSet = new Set([...existingIds, ...players.map(p => p.id)]);
+    const updatedPlayers = Array.from(updatedPlayerSet);
+    // ドキュメント更新
+    const ref = doc(db, 'sessions', currentSessionId);
     await updateDoc(ref, {
-      games: [...data.games, {date,players}],
-      players: [...new Set([...data.players, ...players.map(p=>p.id)])]
+      games: updatedGames,
+      players: updatedPlayers
     });
-    alert('保存しました'); renderSessionHistory([...data.games, {date,players}]);
-  }
+    // ローカル更新・再描画
+    lastGames = updatedGames;
+    renderSessionHistory(updatedGames);
+    alert('保存しました');
+}
+
+// saveRecordをグローバルに公開
+window.saveRecord = saveRecord;
+
 
   // 新セッション開始
   window.startNewSession = async function() {
@@ -213,11 +227,21 @@
   window.updateSessionTable = () => { if (lastGames.length) renderSessionHistory(lastGames); };
 
   document.addEventListener('DOMContentLoaded', async () => {
+    // 日付初期化
     document.getElementById('gameDate').value = new Date().toISOString().split('T')[0];
+    // プレイヤー一覧ロード
     await loadPlayers();
-    if (currentSessionId) {
-      const snap = await getDoc(doc(db,'sessions',currentSessionId));
-      if (snap.exists()) renderSessionHistory(snap.data().games);
+    // セッションがなければ自動作成
+    if (!currentSessionId) {
+      const initDate = document.getElementById('gameDate').value;
+      const docRef = await addDoc(sessionsRef, { title: initDate, players: [], games: [] });
+      currentSessionId = docRef.id;
+      localStorage.setItem('currentSessionId', currentSessionId);
+    }
+    // セッション履歴取得・表示
+    const sessionDoc = await getDoc(doc(db, 'sessions', currentSessionId));
+    if (sessionDoc.exists()) {
+      renderSessionHistory(sessionDoc.data().games);
     }
   });
 </script>
