@@ -1,178 +1,236 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>対戦履歴一覧</title>
-  <style>
-    body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; }
-    h1 { text-align: center; margin-bottom: 20px; }
-    .top-nav { text-align: center; margin-bottom: 20px; }
-    .top-nav button { background-color: #007bff; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; }
-    .top-nav button:hover { background-color: #0056b3; }
-    .filter-box { text-align: center; margin-bottom: 20px; }
-    .filter-box input { padding: 6px 10px; margin: 0 8px; font-size: 14px; }
-    details.session { background: #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 16px; border: 1px solid #ddd; }
-    summary.session-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; font-size: 16px; background-color: #fafafa; border-bottom: 1px solid #ddd; }
-    summary.session-header::-webkit-details-marker { display: none; }
-    summary.session-header::before { content: "▶"; margin-right: 8px; transition: transform 0.2s; color: #666; }
-    details[open] summary.session-header::before { content: "▼"; }
-    summary h3 { margin: 0; font-size: 18px; color: #333; }
-    .summary-box { background: #e0f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
-    .details-content { display: none; padding: 16px; }
-    details[open] .details-content { display: block; }
-    .game-table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #fff; }
-    .game-table th, .game-table td { border: 1px solid #ccc; padding: 8px; text-align: center; font-size: 14px; }
-    .game-table th { background: #f4f4f4; }
-    .game-table tr:nth-child(even) { background-color: #fafafa; }
-    .game-table tr.total-row { background-color: #d0ebff; font-weight: bold; border-top: 2px solid #007bff; } 
-    .game-table tr.total-row th, .game-table tr.total-row td { border-top: 2px solid #007bff; }
-    .player-entry { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
-    .player-entry select, .player-entry input { padding: 6px 8px; font-size: 14px; border: 1px solid #bbb; border-radius: 4px; }
-    .add-game-btn, .delete-game-btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-    .add-game-btn { background: #28a745; color: #fff; margin-top: 12px; }
-    .add-game-btn:hover { background: #1e7e34; }
-    .delete-game-btn { background: #dc3545; color: #fff; }
-    .delete-game-btn:hover { background: #a71d2a; }
-    .message { text-align: center; color: #666; font-size: 16px; margin-top: 40px; }
-  </style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>成績登録</title>
+<style>
+  body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
+  h1 { text-align: center; }
+  .form-section, .history-section {
+    background: white; padding: 20px; max-width: 600px;
+    margin: 20px auto; border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  label, select, input[type="number"], input[type="date"] {
+    display: block; width: 100%; margin-bottom: 10px;
+    padding: 10px; font-size: 16px;
+    border-radius: 5px; border: 1px solid #ccc;
+  }
+  .main-button {
+    display: block; width: 100%; max-width: 300px;
+    margin: 10px auto; padding: 15px; font-size: 18px;
+    background-color: #007bff; color: white;
+    border: none; border-radius: 10px; cursor: pointer;
+  }
+  .main-button:hover { background-color: #0056b3; }
+  .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .player-row select, .player-row input { flex: 1; }
+  .top-nav { text-align: center; margin-bottom: 20px; }
+  .history-section table {
+    width: 100%; border-collapse: collapse; margin-top: 10px;
+  }
+  .history-section th, .history-section td {
+    border: 1px solid #ccc; padding: 8px; text-align: right; font-size: 15px;
+  }
+  .history-section th {
+    background-color: #007bff; color: white; text-align: center;
+  }
+  .history-section tr:nth-child(even) { background-color: #f9f9f9; }
+  .history-section tr:hover { background-color: #f1f1f1; }
+  .history-section .money-row td {
+    font-weight: bold; background-color: #e8f5e9; color: #2e7d32;
+  }
+  .rate-input-wrapper { display: flex; align-items: center; gap: 8px; }
+  .rate-input-wrapper input { width: 100px; }
+  .sum-warning {
+    font-weight: bold; margin: 10px 0; text-align: center;
+  }
+  .positive { color: blue; }
+  .negative { color: red; }
+  .score-input { text-align: right; }
+</style>
 </head>
 <body>
-  <h1>対戦履歴一覧</h1>
-  <div class="top-nav">
-    <button onclick="location.href='index.html'">ホームに戻る</button>
+<h1>成績登録</h1>
+<div class="top-nav">
+  <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+  <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
+</div>
+<div class="form-section">
+  <label>日付：<input id="gameDate" type="date"/></label>
+  <div id="playersContainer"></div>
+  <div class="sum-warning" id="pointSumDisplay"></div>
+  <button class="main-button" onclick="saveRecord()">保存</button>
+</div>
+<div class="form-section rate-box">
+  <label for="rateInput">レート（1ポイントあたり）：</label>
+  <div class="rate-input-wrapper">
+    <input id="rateInput" oninput="updateSessionTable()" type="number" value="50"/>
+    <span>コイン</span>
   </div>
-  <div class="filter-box">
-    <label>開始日：<input id="startDate" type="date"></label>
-    <label>終了日：<input id="endDate" type="date"></label>
-  </div>
-  <div id="historyContainer"><p class="message">データをロード中...</p></div>
+</div>
+<div class="history-section">
+  <h2>この回の対局履歴</h2>
+  <div id="sessionHistory">履歴はまだありません。</div>
+</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore, collection, addDoc, updateDoc, getDocs, getDoc, doc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-      projectId: "mahjong-app-2e2e9",
-      storageBucket: "mahjong-app-2e2e9.appspot.com",
-      messagingSenderId: "440425002404",
-      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
-    };
-    initializeApp(firebaseConfig);
-    const db = getFirestore();
-    signInAnonymously(getAuth()).catch(console.error);
+  const firebaseConfig = {
+    apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
+    authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+    projectId: "mahjong-app-2e2e9",
+    storageBucket: "mahjong-app-2e2e9.appspot.com",
+    messagingSenderId: "440425002404",
+    appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+  };
 
-    let allSessions = [];
-    const playersMap = {};
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
 
-    async function loadPlayers() {
-      const snap = await getDocs(collection(db, 'players'));
-      snap.forEach(d => { const p = d.data(); playersMap[p.id] = p.name; });
-    }
+  signInAnonymously(auth)
+    .then(() => console.log('🔑 匿名ログイン成功'))
+    .catch(err => console.error('⚠️ 認証失敗:', err));
 
-    function render() {
-      const container = document.getElementById('historyContainer');
-      const start = document.getElementById('startDate').value;
-      const end = document.getElementById('endDate').value;
-      const sessions = allSessions
-        .map(s => ({
-          id: s.id,
-          title: s.title,
-          games: s.games
-            .filter(g => (!start || g.date >= start) && (!end || g.date <= end))
-            .sort((a, b) => a.date.localeCompare(b.date))
-        }))
-        .filter(s => s.games.length)
-        .sort((a, b) => b.title.localeCompare(a.title));
+  onAuthStateChanged(auth, user => user ? console.log('👤 ユーザー:', user.uid) : null);
 
-      if (!sessions.length) {
-        container.innerHTML = '<p class="message">表示できるセッションがありません。</p>';
-        return;
-      }
-      container.innerHTML = '';
+  const playersRef  = collection(db, 'players');
+  const sessionsRef = collection(db, 'sessions');
 
-      sessions.forEach(session => {
-        const participantIds = [...new Set(session.games.flatMap(g => g.players.map(p => p.id)))];
-        const sumPts = {};
-        participantIds.forEach(id => sumPts[id] = 0);
-        session.games.forEach(g => g.players.forEach(p => sumPts[p.id] += p.point));
-        const summaryText = participantIds
-          .map(id => `${playersMap[id]||id}: ${sumPts[id]>=0?'+':''}${sumPts[id].toFixed(1)}pt`)
-          .join('<br>');
+  let currentSessionId = localStorage.getItem('currentSessionId') || null;
+  let playerList       = [];
+  let lastGames        = [];
 
-        let html = '<details class="session">';
-        html += `<summary class="session-header"><h3>${session.title}</h3><div class="summary-box">${summaryText}</div></summary>`;
-        html += '<div class="details-content">';
-        html += '<table class="game-table"><thead><tr><th>回数</th>';
-        participantIds.forEach(id => html += `<th colspan="2">${playersMap[id]||id}</th>`);
-        html += '<th>操作</th></tr><tr><th></th>';
-        participantIds.forEach(_ => html += '<th>＋</th><th>－</th>');
-        html += '<th></th></tr></thead><tbody>';
-        session.games.forEach((g,i) => {
-          html += `<tr><td>${i+1}</td>`;
-          participantIds.forEach(id => {
-            const pl = g.players.find(p => p.id===id);
-            const plus = pl && pl.point>0?`+${pl.point.toFixed(1)}`:'';
-            const minus = pl && pl.point<0?pl.point.toFixed(1):'';
-            html += `<td>${plus}</td><td>${minus}</td>`;
-          });
-          html += `<td><button class="delete-game-btn" data-sid="${session.id}" data-idx="${i}">削除</button></td></tr>`;
-        });
-        html += '<tr class="total-row"><th>合計</th>';
-        participantIds.forEach(id => {
-          const val = sumPts[id].toFixed(1);
-          const plus = sumPts[id]>0?`+${val}`:'';
-          const minus = sumPts[id]<0?val:'';
-          html += `<td>${plus}</td><td>${minus}</td>`;
-        });
-        html += '<td></td></tr></tbody></table>';
-        html += `<form class="add-game-form" data-sid="${session.id}"><input type="date" name="date" required>`;
-        participantIds.forEach((id,idx) => {
-          html += '<div class="player-entry">';
-          html += `<select name="player${idx}">`;
-          participantIds.forEach(pid => html += `<option value="${pid}">${playersMap[pid]}</option>`);
-          html += '</select>';
-          html += `<input type="number" name="point${idx}" placeholder="点数" required>`;
-          html += '</div>';
-        });
-        html += '<button type="submit" class="add-game-btn">半荘追加</button></form>';
-        html += '</div></details>';
-        container.insertAdjacentHTML('beforeend', html);
+  // 点数→ポイント変換
+  function computePoint(score, rank) {
+    const base = (score - 30000) / 1000;
+    const oka  = 10;
+    const uma  = {1:30,2:10,3:-10,4:-30};
+    return base + oka + (uma[rank]||0);
+  }
+
+  // プレイヤー一覧ロード
+  async function loadPlayers() {
+    const snap = await getDocs(playersRef);
+    playerList = snap.docs.map(d => d.data());
+    const container = document.getElementById('playersContainer');
+    container.innerHTML = '';
+    for (let i = 0; i < 4; i++) {
+      const row = document.createElement('div'); row.className = 'player-row';
+      const sel = document.createElement('select');
+      sel.innerHTML = `<option disabled selected>選択してください</option>` +
+        playerList.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+      const inp = document.createElement('input'); inp.type='number'; inp.placeholder='点数'; inp.className='score-input';
+      inp.addEventListener('input', ()=>{
+        updatePointSum(); updateInputColor(inp);
       });
-      document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick=deleteGame);
-      document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit=addGame);
+      row.append(sel, inp);
+      container.append(row);
     }
+  }
 
-    async function addGame(e) {
-      e.preventDefault(); const f = e.target;
-      const sid = f.dataset.sid; const date = f.date.value;
-      const players = [];
-      [...f.elements].filter(el=>el.name.startsWith('player')).forEach((sel,idx)=>{
-        players.push({id: sel.value, point: parseFloat(f[`point${idx}`].value)});
-      });
-      const sess = allSessions.find(s=>s.id===sid);
-      sess.games.push({date, players});
-      await updateDoc(doc(db,'sessions',sid),{games:sess.games});
-      render();
+  // 合計ポイント表示
+  function updatePointSum() {
+    const rows = document.querySelectorAll('.player-row');
+    const arr  = Array.from(rows).map(r=>({row:r,score:parseFloat(r.querySelector('input').value)||0}));
+    const sorted = [...arr].sort((a,b)=>b.score - a.score);
+    const rankMap= new Map(); sorted.forEach((x,i)=>rankMap.set(x.row,i+1));
+    let sum=0; arr.forEach(x=> sum+= computePoint(x.score, rankMap.get(x.row)) );
+    const disp = document.getElementById('pointSumDisplay');
+    disp.textContent = `合計ポイント: ${sum.toFixed(1)}`;
+    disp.style.color = Math.abs(sum)<0.001? 'green':'red';
+  }
+
+  function updateInputColor(input) {
+    const v = parseFloat(input.value);
+    input.classList.remove('positive','negative');
+    if (!isNaN(v)) input.classList.add(v<0?'negative':'positive');
+  }
+
+  // 保存
+  async function saveRecord() {
+    if (!currentSessionId) return alert('先に新セッションを開始してください');
+    const date = document.getElementById('gameDate').value;
+    const rows = document.querySelectorAll('.player-row');
+    const arr  = Array.from(rows).map(r=>({row:r,score:parseFloat(r.querySelector('input').value)||0}));
+    const sorted = [...arr].sort((a,b)=>b.score - a.score);
+    const rankMap= new Map(); sorted.forEach((x,i)=>rankMap.set(x.row,i+1));
+    const players = arr.map(x=>({id:x.row.querySelector('select').value, point:Number(computePoint(x.score, rankMap.get(x.row)).toFixed(1))}));
+    const sum = players.reduce((a,p)=>a+p.point,0);
+    if (Math.abs(sum)>0.001) return alert('ポイント合計が±0ではありません');
+    const ref = doc(db,'sessions',currentSessionId);
+    const snap= await getDoc(ref);
+    const data= snap.data();
+    await updateDoc(ref,{
+      games: [...data.games,{date,players}],
+      players: [...new Set([...data.players,...players.map(p=>p.id)])]
+    });
+    alert('保存しました'); renderSessionHistory([...data.games,{date,players}]);
+  }
+
+  // セッション開始
+  window.startNewSession = async function() {
+    const date = document.getElementById('gameDate').value;
+    if (!date) return alert('日付を選択してください');
+    const docRef = await addDoc(sessionsRef,{title:date,players:[],games:[]});
+    currentSessionId = docRef.id;
+    localStorage.setItem('currentSessionId',currentSessionId);
+    alert('新しい回を開始しました');
+    renderSessionHistory([]);
+  };
+
+  // 履歴テーブル描画
+  function renderSessionHistory(games) {
+    lastGames = games;
+    const container = document.getElementById('sessionHistory');
+    if (!games.length) { container.innerHTML='履歴はまだありません。'; return; }
+    const ids = [...new Set(games.flatMap(g=>g.players.map(p=>p.id)))];
+    const idToName = Object.fromEntries(playerList.map(p=>[p.id,p.name]));
+    let html = '<table><tr><th>日付</th>' + ids.map(id=>`<th>${idToName[id]}</th>`).join('') + '</tr>';
+    const totals = Object.fromEntries(ids.map(id=>[id,0]));
+    games.forEach(game=>{
+      html += `<tr><td>${game.date}</td>` + ids.map(id=>{
+        const pl=game.players.find(p=>p.id===id);
+        const v=pl?pl.point:''; if(pl) totals[id]+=pl.point;
+        const c=pl?(pl.point<0?'red':'blue'):'';
+        return `<td style="color:${c}">${v}</td>`;
+      }).join('') + '</tr>';
+    });
+    // 合計
+    html += '<tr class="money-row"><td>合計</td>' + ids.map(id=>{
+      const v=totals[id].toFixed(1);
+      const c=totals[id]<0?'red':'blue'; return `<td style="color:${c}">${v}</td>`;
+    }).join('') + '</tr>';
+    // 換算
+    const rate=parseFloat(document.getElementById('rateInput').value||0);
+    html += '<tr class="money-row"><td>換算</td>' + ids.map(id=>{
+      const coin=Math.round(totals[id]*rate);
+      const c=coin<0?'red':'blue'; return `<td style="color:${c}">${coin} コイン</td>`;
+    }).join('') + '</tr>';
+    html += '</table>';
+    container.innerHTML=html;
+  }
+
+  window.updateSessionTable = ()=>{
+    if (lastGames.length) renderSessionHistory(lastGames);
+  };
+
+  // 初期化
+  document.addEventListener('DOMContentLoaded', async()=>{
+    document.getElementById('gameDate').value = new Date().toISOString().split('T')[0];
+    await loadPlayers();
+    if (currentSessionId) {
+      const snap=await getDoc(doc(db,'sessions',currentSessionId));
+      if (snap.exists()) renderSessionHistory(snap.data().games);
     }
-
-    function deleteGame(e) {
-      if(!confirm('本当に削除しますか？')) return;
-      const sid = e.target.dataset.sid; const idx = +e.target.dataset.idx;
-      const sess = allSessions.find(s=>s.id===sid);
-      sess.games.splice(idx,1);
-      updateDoc(doc(db,'sessions',sid),{games:sess.games}).then(render);
-    }
-
-    (async()=>{
-      await loadPlayers();
-      onSnapshot(collection(db,'sessions'),snap=>{allSessions=snap.docs.map(d=>({id:d.id,...d.data()}));render();});
-      document.getElementById('startDate').addEventListener('change',render);
-      document.getElementById('endDate').addEventListener('change',render);
-    })();
-  </script>
+  });
+</script>
 </body>
 </html>
