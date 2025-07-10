@@ -17,7 +17,8 @@
     summary.session-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; }
     summary h3 { margin: 0; font-size: 18px; }
     .summary-box { background: #e0f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
-    .details-content { padding: 0 16px 16px; }
+    .details-content { display: none; padding: 0 16px 16px; }
+    details.session[open] .details-content { display: block; }
     .game-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     .game-table th, .game-table td { border: 1px solid #ccc; padding: 8px; text-align: center; font-size: 14px; }
     .game-table th { background: #f4f4f4; }
@@ -27,6 +28,7 @@
     .add-game-form input { padding: 4px 8px; font-size: 14px; }
     .add-game-btn { background: #28a745; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
     .add-game-btn:hover { background: #1e7e34; }
+    .message { text-align: center; color: #666; font-size: 16px; margin-top: 40px; }
   </style>
 </head>
 <body>
@@ -42,20 +44,37 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDocs, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    const firebaseConfig = { /* Firebase 設定 */ };
+    // --- Firebase 設定を必ずご自身の設定に置き換えてください ---
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      // ...そのほか必要な設定
+    };
+    if (!firebaseConfig.apiKey) {
+      document.getElementById('historyContainer').innerHTML = '<p class="message">Firebase設定が未設定です。firebaseConfigを確認してください。</p>';
+      console.error('Firebase config is missing');
+      throw new Error('Firebase config missing');
+    }
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const auth = getAuth(); signInAnonymously(auth).catch(console.error);
+    const auth = getAuth();
+    signInAnonymously(auth).catch(err => console.error(err));
 
     let allSessions = [];
     const playersMap = {};
 
     async function loadPlayerNames() {
-      const snap = await getDocs(collection(db, 'players'));
-      snap.forEach(d => { const td = d.data(); playersMap[td.id] = td.name; });
+      try {
+        const snap = await getDocs(collection(db, 'players'));
+        snap.forEach(d => { const td = d.data(); playersMap[td.id] = td.name; });
+      } catch (err) {
+        console.error('プレイヤーデータの取得に失敗:', err);
+      }
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -64,18 +83,25 @@
       document.getElementById('endDate').addEventListener('change', render);
       onSnapshot(collection(db, 'sessions'), snap => {
         allSessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('Loaded sessions:', allSessions);
         render();
-      });
+      }, err => console.error('セッションの監視でエラー:', err));
     });
 
     function render() {
-      const start = document.getElementById('startDate').value;
-      const end   = document.getElementById('endDate').value;
       const container = document.getElementById('historyContainer');
       container.innerHTML = '';
 
+      console.log('allSessions at render:', allSessions);
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
       const filtered = allSessions.filter(s => (!start || s.title >= start) && (!end || s.title <= end));
       filtered.sort((a,b) => b.title.localeCompare(a.title));
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<p class="message">表示できるセッションがありません。</p>';
+        return;
+      }
 
       filtered.forEach(session => {
         const details = document.createElement('details'); details.className = 'session';
@@ -95,9 +121,7 @@
                   <tr>
                     <td>${g.date}</td>
                     <td>${g.players.map(p=>`${playersMap[p.id]||p.id} (${p.point>=0?'+':''}${p.point})`).join(' / ')}</td>
-                    <td>
-                      <button class="delete-game-btn" data-sid="${session.id}" data-idx="${i}">削除</button>
-                    </td>
+                    <td><button class="delete-game-btn" data-sid="${session.id}" data-idx="${i}">削除</button></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -117,9 +141,9 @@
     }
 
     async function deleteGame(e) {
+      if (!confirm('本当に削除しますか？')) return;
       const sid = e.target.dataset.sid;
       const idx = +e.target.dataset.idx;
-      if (!confirm('本当に削除しますか？')) return;
       const session = allSessions.find(s => s.id === sid);
       session.games.splice(idx, 1);
       await updateDoc(doc(db, 'sessions', sid), { games: session.games });
