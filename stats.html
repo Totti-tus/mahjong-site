@@ -299,14 +299,14 @@
       const players = Object.values(window.playerData)
         .map(p => {
           const avgDiff = (p.totalPoint - p.totalRankPoint) / p.games;
-          p._sortKey = 25000 + avgDiff * 1000;
+          p._sortKey = 30000 + avgDiff * 1000;
           return p;
         })
-        .sort((a,b)=>b._sortKey - a._sortKey);
+        .sort((a, b) => b.totalPoint - a.totalPoint);
 
       players.forEach(p => {
         const avgDiff    = (p.totalPoint - p.totalRankPoint) / p.games;
-        const avgFinal   = (25000 + avgDiff * 1000).toFixed(0);
+        const avgFinal   = (30000 + avgDiff * 1000).toFixed(0);
         const avgRank    = (p.totalRank / p.games).toFixed(2);
         const topRate    = ((p.tops / p.games)*100).toFixed(1) + '%';
         const twoRate    = (((p.tops + p.seconds) / p.games)*100).toFixed(1) + '%';
@@ -345,31 +345,37 @@
 
     // 最大/最小ハイライト
     function applyHighlighting() {
-      const table = document.getElementById("statsTable");
-      const rows  = Array.from(table.querySelectorAll("tbody tr"));
-      const cols  = table.rows[0].cells.length;
-      for (let c = 1; c < cols; c++) {
-        let max = -Infinity, min = Infinity;
-        rows.forEach(r => {
-          const v = parseFloat(r.cells[c].textContent);
-          if (!isNaN(v)) { max = Math.max(max, v); min = Math.min(min, v); }
-        });
-        rows.forEach(r => {
-          const cell = r.cells[c];
-          const v = parseFloat(cell.textContent);
-          const h = table.rows[0].cells[c].textContent.trim();
-          cell.classList.remove("highlight-max", "highlight-min");
-          if (!isNaN(v)) {
-            if (h === "平均着順") {
-              if (v === min) cell.classList.add("highlight-max");
-              if (v === max) cell.classList.add("highlight-min");
-            } else {
-              if (v === max) cell.classList.add("highlight-max");
-              if (v === min) cell.classList.add("highlight-min");
-            }
-          }
-        });
-      }
+      headers.forEach((header, ci) => {
+  // 各セルから比較用の数値を取り出す
+  const vals = rows.map(r => {
+    const cell = r.cells[ci];
+    if (["1位","2位","3位","4位"].includes(header)) {
+      // 小要素(<small>)の % 表示をパース
+      return parseFloat(cell.querySelector("small").textContent) || 0;
+    } else {
+      // それ以外はセルのテキストを数値化
+      return parseFloat(cell.textContent) || 0;
+    }
+  });
+  const max = Math.max(...vals);
+  const min = Math.min(...vals);
+
+  rows.forEach((r, i) => {
+    const cell = r.cells[ci];
+    const v = vals[i];
+    cell.classList.remove("highlight-max","highlight-min");
+    if (header === "平均着順") {
+      // 着順は「小さいほどよい」扱い
+      if (v === min) cell.classList.add("highlight-max");
+      if (v === max) cell.classList.add("highlight-min");
+    } else {
+      // その他は「大きいほどよい」
+      if (v === max) cell.classList.add("highlight-max");
+      if (v === min) cell.classList.add("highlight-min");
+    }
+  });
+});
+
     }
 
     // 詳細表示
