@@ -139,7 +139,36 @@
   // 合計ポイント表示
   function updatePointSum() {
     const rows = document.querySelectorAll('.player-row');
-    const arr  = Array.from(rows).map(r=>({row:r,score:parseFloat(r.querySelector('input').value)||0}));
+    // 合計スコア計算 (各プレイヤーの点数合計)
+    let sumScore = 0;
+    const arr = Array.from(rows).map(r => {
+      const score = parseFloat(r.querySelector('input').value) || 0;
+      sumScore += score;
+      return { row: r, score };
+    });
+    // ランク判定（スコア降順）
+    const sorted = [...arr].sort((a, b) => b.score - a.score);
+    const rankMap = new Map();
+    sorted.forEach((item, i) => rankMap.set(item.row, i + 1));
+    // 合計ポイント計算
+    let sumPoint = 0;
+    arr.forEach(item => {
+      const rank = rankMap.get(item.row);
+      sumPoint += computePoint(item.score, rank);
+    });
+    
+    const disp = document.getElementById('pointSumDisplay');
+    // 表示をスコアとポイント両方に
+    disp.innerHTML = `合計スコア: ${sumScore.toFixed(0)} (基準 100000)<br>合計ポイント: ${sumPoint.toFixed(1)}`;
+    // 色分け
+    disp.style.color = '';
+    // スコア合計の色
+    if (sumScore !== 100000) {
+      disp.innerHTML = disp.innerHTML.replace(/合計スコア:[^<]+/, `<span style="color:red;">合計スコア: ${sumScore.toFixed(0)} (要100000)</span>`);
+    } else {
+      disp.innerHTML = disp.innerHTML.replace(/合計スコア:[^<]+/, `<span style="color:green;">合計スコア: ${sumScore.toFixed(0)} (OK)</span>`);
+    }
+  }));
     const sorted = [...arr].sort((a,b)=>b.score - a.score);
     const rankMap= new Map(); sorted.forEach((x,i)=>rankMap.set(x.row,i+1));
     let sum=0; arr.forEach(x=> sum+= computePoint(x.score, rankMap.get(x.row)) );
