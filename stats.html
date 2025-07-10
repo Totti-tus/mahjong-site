@@ -242,10 +242,8 @@
 
             
             // ゲームごとに
-            const diff = p.point - rankPt;
-             if (diff <= -60) {
-             // 飛びの基準は得点 <= -60 
-             d.tobiCount++;
+            if (p.point <= -60) {
+              d.tobiCount++;
             }
 
 
