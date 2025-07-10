@@ -1,106 +1,171 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>対戦履歴</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>対戦履歴一覧</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f0f0f0; margin: 0; padding: 20px; }
+    body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; }
     h1 { text-align: center; margin-bottom: 20px; }
-    .session-list { max-width: 600px; margin: auto; }
-    details.session { background: #fff; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    summary { padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .top-nav { text-align: center; margin-bottom: 20px; }
+    .top-nav button { background-color: #007bff; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; }
+    .top-nav button:hover { background-color: #0056b3; }
+    .filter-box { text-align: center; margin-bottom: 20px; }
+    .filter-box input { padding: 6px 10px; margin: 0 8px; font-size: 14px; }
+    details.session { background: #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 16px; }
+    summary.session-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; font-size: 16px; }
+    summary.session-header::-webkit-details-marker { display: none; }
+    summary.session-header::before { content: "▶"; margin-right: 8px; transition: transform 0.2s; }
+    details[open] summary.session-header::before { content: "▼"; }
     summary h3 { margin: 0; font-size: 18px; }
-    .summary-box { background: #e0f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
-    .details-content { display: none; padding: 0 16px 16px; font-size: 14px; }
+    .summary-box { background: #e0f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; white-space: pre-wrap; }
+    .details-content { display: none; padding: 0 16px 16px; }
     details[open] .details-content { display: block; }
-    .game-entry { margin: 8px 0; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-    .game-entry:last-child { border-bottom: none; }
-    .message { text-align: center; color: #666; margin-top: 40px; }
+    .game-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .game-table th, .game-table td { border: 1px solid #ccc; padding: 8px; text-align: center; font-size: 14px; }
+    .game-table th { background: #f4f4f4; }
+    .delete-game-btn, .add-game-btn { padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .delete-game-btn { background: #dc3545; color: #fff; }
+    .delete-game-btn:hover { background: #a71d2a; }
+    .add-game-form { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+    .add-game-form input { padding: 4px 8px; font-size: 14px; }
+    .add-game-btn { background: #28a745; color: #fff; }
+    .add-game-btn:hover { background: #1e7e34; }
+    .message { text-align: center; color: #666; font-size: 16px; margin-top: 40px; }
   </style>
 </head>
 <body>
-  <h1>対戦履歴</h1>
-  <div class="session-list" id="sessionList">
-    <p class="message">データをロード中...</p>
+  <h1>対戦履歴一覧</h1>
+  <div class="top-nav">
+    <button onclick="location.href='index.html'">ホームに戻る</button>
   </div>
+  <div class="filter-box">
+    <label>開始日：<input id="startDate" type="date"></label>
+    <label>終了日：<input id="endDate" type="date"></label>
+  </div>
+  <div id="historyContainer"><p class="message">データをロード中...</p></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    // --- 自分の Firebase プロジェクト設定に置き換えてください ---
+    // --- Firebase 設定を置き換えてください ---
     const firebaseConfig = {
-      apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-      projectId: "mahjong-app-2e2e9",
-      storageBucket: "mahjong-app-2e2e9.appspot.com",
-      messagingSenderId: "440425002404",
-      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
-
     initializeApp(firebaseConfig);
     const db = getFirestore();
     signInAnonymously(getAuth()).catch(console.error);
 
-    const sessionList = document.getElementById('sessionList');
+    let allSessions = [];
     const playersMap = {};
-    let loaded = false;
 
-    // プレイヤー名を取得
-    onSnapshot(collection(db, 'players'), snap => {
-      snap.docs.forEach(d => playersMap[d.data().id] = d.data().name);
-    });
+    async function loadPlayers() {
+      const snap = await getDocs(collection(db, 'players'));
+      snap.forEach(d => { const p = d.data(); playersMap[p.id] = p.name; });
+    }
 
-    // セッション一覧をリアルタイム購読
-    onSnapshot(collection(db, 'sessions'), snap => {
-      const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      render(sessions);
-    }, err => {
-      console.error('セッション取得エラー:', err);
-      sessionList.innerHTML = '<p class="message">セッションの取得に失敗しました。</p>';
-    });
+    function render() {
+      const container = document.getElementById('historyContainer');
+      container.innerHTML = '';
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
 
-    function render(sessions) {
-      if (!loaded) loaded = true;
-      // 日付フィルタを考慮しない場合は全件表示
-      if (sessions.length === 0) {
-        sessionList.innerHTML = '<p class="message">記録がありません。</p>';
+      // 各ゲームを範囲内でフィルタ
+      const sessionsToShow = allSessions
+        .map(session => ({
+          id: session.id,
+          title: session.title,
+          games: session.games
+            .filter(g => (!start || g.date >= start) && (!end || g.date <= end))
+            .sort((a, b) => a.date.localeCompare(b.date))
+        }))
+        .filter(session => session.games.length > 0)
+        .sort((a, b) => b.title.localeCompare(a.title));
+
+      if (!sessionsToShow.length) {
+        container.innerHTML = '<p class="message">表示できるセッションがありません。</p>';
         return;
       }
 
-      // タイトル（ID）降順
-      sessions.sort((a, b) => b.title.localeCompare(a.title));
-
-      sessionList.innerHTML = '';
-      sessions.forEach(session => {
-        const detail = document.createElement('details');
-        detail.className = 'session';
-        // 集計
+      sessionsToShow.forEach(session => {
+        const details = document.createElement('details');
+        details.className = 'session';
         const summaryPoints = session.games.reduce((acc, g) => {
-          g.players.forEach(p => acc[p.id] = (acc[p.id]||0) + p.point);
+          g.players.forEach(p => { acc[p.id] = (acc[p.id] || 0) + p.point; });
           return acc;
         }, {});
         const summaryText = Object.entries(summaryPoints)
-          .map(([id, pt]) => `${playersMap[id]||id}: ${pt>=0?'+':''}${pt.toFixed(1)}pt`)
-          .join('<br>');
+          .map(([id, pt]) => `${playersMap[id] || id}: ${pt >= 0 ? '+' : ''}${pt.toFixed(1)}pt`)
+          .join('\n');
 
-        detail.innerHTML = `
-          <summary>
+        details.innerHTML = `
+          <summary class="session-header">
             <h3>${session.title}</h3>
             <div class="summary-box">${summaryText}</div>
           </summary>
           <div class="details-content">
-            ${session.games.map(g => {
-              const line = g.players.map(p => `${playersMap[p.id]||p.id} (${p.point>=0?'+':''}${p.point})`).join(' / ');
-              return `<div class="game-entry"><strong>${g.date}</strong><br>${line}</div>`;
-            }).join('')}
+            <table class="game-table">
+              <thead><tr><th>日付</th><th>結果</th><th>操作</th></tr></thead>
+              <tbody>
+                ${session.games.map((g, i) => `
+                  <tr>
+                    <td>${g.date}</td>
+                    <td>${g.players.map(p => `${playersMap[p.id] || p.id} (${p.point >= 0 ? '+' : ''}${p.point})`).join(' / ')}</td>
+                    <td><button class="delete-game-btn" data-sid="${session.id}" data-idx="${i}">削除</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <form class="add-game-form" data-sid="${session.id}">
+              <input type="date" name="date" required>
+              <input type="text" name="players" placeholder="ID:点数,ID:点数,..." required>
+              <button type="submit" class="add-game-btn">半荘追加</button>
+            </form>
           </div>
         `;
-        sessionList.appendChild(detail);
+        container.appendChild(details);
       });
+
+      // イベント再設定
+      document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick = deleteGame);
+      document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit = addGame);
     }
+
+    function deleteGame(e) {
+      if (!confirm('本当に削除しますか？')) return;
+      const sid = e.target.dataset.sid;
+      const idx = +e.target.dataset.idx;
+      const session = allSessions.find(s => s.id === sid);
+      session.games.splice(idx, 1);
+      updateDoc(doc(db, 'sessions', sid), { games: session.games });
+    }
+
+    function addGame(e) {
+      e.preventDefault();
+      const form = e.target;
+      const sid = form.dataset.sid;
+      const date = form.date.value;
+      const players = form.players.value.split(',').map(x => { const [id, pt] = x.split(':'); return { id, point: parseFloat(pt) }; });
+      const session = allSessions.find(s => s.id === sid);
+      session.games.push({ date, players });
+      updateDoc(doc(db, 'sessions', sid), { games: session.games });
+      form.reset();
+    }
+
+    onSnapshot(collection(db, 'sessions'), snap => {
+      allSessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    }, err => { console.error(err); document.getElementById('historyContainer').innerHTML = '<p class="message">取得エラー</p>'; });
+    document.getElementById('startDate').addEventListener('change', render);
+    document.getElementById('endDate').addEventListener('change', render);
+    loadPlayers();
   </script>
 </body>
 </html>
