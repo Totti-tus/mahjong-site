@@ -351,6 +351,10 @@
 
     // 最大/最小ハイライト
     function applyHighlighting() {
+     const table   = document.getElementById("statsTable");
+     const rows    = Array.from(table.querySelectorAll("tbody tr"));
+     const headers = Array.from(table.querySelectorAll("thead th"))
+                       .map(th => th.textContent.trim());
      headers.forEach((header, ci) => {
       // 各セルから比較用の数値を取り出す
       const vals = rows.map(r => {
