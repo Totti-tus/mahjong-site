@@ -12,22 +12,24 @@
     .top-nav button:hover { background-color: #0056b3; }
     .filter-box { text-align: center; margin-bottom: 20px; }
     .filter-box input { padding: 6px 10px; margin: 0 8px; font-size: 14px; }
-    details.session { background: #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 16px; }
-    summary.session-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; font-size: 16px; }
+    details.session { background: #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 16px; border: 1px solid #ddd; }
+    summary.session-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; font-size: 16px; background-color: #fafafa; border-bottom: 1px solid #ddd; }
     summary.session-header::-webkit-details-marker { display: none; }
-    summary.session-header::before { content: "▶"; margin-right: 8px; transition: transform 0.2s; }
+    summary.session-header::before { content: "▶"; margin-right: 8px; transition: transform 0.2s; color: #666; }
     details[open] summary.session-header::before { content: "▼"; }
-    summary h3 { margin: 0; font-size: 18px; }
-    .summary-box { background: #e0f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; white-space: pre-wrap; }
-    .details-content { display: none; padding: 0 16px 16px; }
+    summary h3 { margin: 0; font-size: 18px; color: #333; }
+    .summary-box { background: #e0f7fa; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
+    .details-content { display: none; padding: 16px; }
     details[open] .details-content { display: block; }
-    .game-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .game-table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #fff; }
     .game-table th, .game-table td { border: 1px solid #ccc; padding: 8px; text-align: center; font-size: 14px; }
     .game-table th { background: #f4f4f4; }
-    .player-entry { display: flex; gap: 4px; align-items: center; margin: 4px 0; }
-    .player-entry select, .player-entry input { padding: 4px 8px; font-size: 14px; }
-    .add-game-btn, .delete-game-btn { padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-    .add-game-btn { background: #28a745; color: #fff; margin-top: 8px; }
+    .game-table tr:nth-child(even) { background-color: #fafafa; }
+    .game-table tr.total-row { background-color: #e8f6ff; font-weight: bold; }
+    .player-entry { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    .player-entry select, .player-entry input { padding: 6px 8px; font-size: 14px; border: 1px solid #bbb; border-radius: 4px; }
+    .add-game-btn, .delete-game-btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .add-game-btn { background: #28a745; color: #fff; margin-top: 12px; }
     .add-game-btn:hover { background: #1e7e34; }
     .delete-game-btn { background: #dc3545; color: #fff; }
     .delete-game-btn:hover { background: #a71d2a; }
@@ -50,7 +52,6 @@
     import { getFirestore, collection, onSnapshot, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    // Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
       authDomain: "mahjong-app-2e2e9.firebaseapp.com",
@@ -66,18 +67,15 @@
     let allSessions = [];
     const playersMap = {};
 
-    // プレイヤー名マップをロード
     async function loadPlayers() {
       const snap = await getDocs(collection(db, 'players'));
       snap.forEach(d => { const p = d.data(); playersMap[p.id] = p.name; });
     }
 
-    // 描画
     function render() {
       const container = document.getElementById('historyContainer');
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
-
       const sessions = allSessions
         .map(s => ({
           id: s.id,
@@ -96,18 +94,14 @@
       container.innerHTML = '';
 
       sessions.forEach(session => {
-        // 参加プレイヤーID一覧
         const participantIds = [...new Set(session.games.flatMap(g => g.players.map(p => p.id)))];
-        // 合計点計算
         const sumPts = {};
         participantIds.forEach(id => sumPts[id] = 0);
         session.games.forEach(g => g.players.forEach(p => sumPts[p.id] += p.point));
-        // サマリーテキスト
         const summaryText = participantIds
           .map(id => `${playersMap[id]||id}: ${sumPts[id]>=0?'+':''}${sumPts[id].toFixed(1)}pt`)
           .join('<br>');
 
-        // テーブルHTML
         let html = '<details class="session">';
         html += `<summary class="session-header"><h3>${session.title}</h3><div class="summary-box">${summaryText}</div></summary>`;
         html += '<div class="details-content">';
@@ -116,7 +110,6 @@
         html += '<th>操作</th></tr><tr><th></th>';
         participantIds.forEach(_ => html += '<th>＋</th><th>－</th>');
         html += '<th></th></tr></thead><tbody>';
-
         session.games.forEach((g,i) => {
           html += `<tr><td>${i+1}</td>`;
           participantIds.forEach(id => {
@@ -127,8 +120,7 @@
           });
           html += `<td><button class="delete-game-btn" data-sid="${session.id}" data-idx="${i}">削除</button></td></tr>`;
         });
-        // 合計行
-        html += '<tr><th>合計</th>';
+        html += '<tr class="total-row"><th>合計</th>';
         participantIds.forEach(id => {
           const val = sumPts[id].toFixed(1);
           const plus = sumPts[id]>0?`+${val}`:'';
@@ -136,7 +128,6 @@
           html += `<td>${plus}</td><td>${minus}</td>`;
         });
         html += '<td></td></tr></tbody></table>';
-        // 追加フォーム
         html += `<form class="add-game-form" data-sid="${session.id}"><input type="date" name="date" required>`;
         participantIds.forEach((id,idx) => {
           html += '<div class="player-entry">';
@@ -148,38 +139,33 @@
         });
         html += '<button type="submit" class="add-game-btn">半荘追加</button></form>';
         html += '</div></details>';
-
         container.insertAdjacentHTML('beforeend', html);
       });
-
-      // イベント登録
-      document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick = deleteGame);
-      document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit = addGame);
+      document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick=deleteGame);
+      document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit=addGame);
     }
 
     async function addGame(e) {
-      e.preventDefault(); const f=e.target;
-      const sid=f.dataset.sid; const date=f.date.value;
-      const players=[];
+      e.preventDefault(); const f = e.target;
+      const sid = f.dataset.sid; const date = f.date.value;
+      const players = [];
       [...f.elements].filter(el=>el.name.startsWith('player')).forEach((sel,idx)=>{
-        const id=sel.value; const pt=parseFloat(f[`point${idx}`].value);
-        players.push({id,point:pt});
+        players.push({id: sel.value, point: parseFloat(f[`point${idx}`].value)});
       });
-      const sess=allSessions.find(s=>s.id===sid);
-      sess.games.push({date,players});
+      const sess = allSessions.find(s=>s.id===sid);
+      sess.games.push({date, players});
       await updateDoc(doc(db,'sessions',sid),{games:sess.games});
       render();
     }
 
-    function deleteGame(e){
+    function deleteGame(e) {
       if(!confirm('本当に削除しますか？')) return;
-      const sid=e.target.dataset.sid; const idx=+e.target.dataset.idx;
-      const sess=allSessions.find(s=>s.id===sid);
+      const sid = e.target.dataset.sid; const idx = +e.target.dataset.idx;
+      const sess = allSessions.find(s=>s.id===sid);
       sess.games.splice(idx,1);
       updateDoc(doc(db,'sessions',sid),{games:sess.games}).then(render);
     }
 
-    // 初期化
     (async()=>{
       await loadPlayers();
       onSnapshot(collection(db,'sessions'),snap=>{allSessions=snap.docs.map(d=>({id:d.id,...d.data()}));render();});
