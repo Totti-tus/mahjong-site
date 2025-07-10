@@ -27,28 +27,18 @@
   .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
   .player-row select, .player-row input { flex: 1; }
   .top-nav { text-align: center; margin-bottom: 20px; }
-  .history-section table {
-    width: 100%; border-collapse: collapse; margin-top: 10px;
-  }
-  .history-section th, .history-section td {
-    border: 1px solid #ccc; padding: 8px; text-align: right; font-size: 15px;
-  }
-  .history-section th {
-    background-color: #007bff; color: white; text-align: center;
-  }
-  .history-section tr:nth-child(even) { background-color: #f9f9f9; }
-  .history-section tr:hover { background-color: #f1f1f1; }
-  .history-section .money-row td {
-    font-weight: bold; background-color: #e8f5e9; color: #2e7d32;
-  }
-  .rate-input-wrapper { display: flex; align-items: center; gap: 8px; }
-  .rate-input-wrapper input { width: 100px; }
-  .sum-warning {
-    font-weight: bold; margin: 10px 0; text-align: center;
-  }
+  .sum-warning { font-weight: bold; margin: 10px 0; text-align: center; }
   .positive { color: blue; }
   .negative { color: red; }
   .score-input { text-align: right; }
+  .history-section table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .history-section th, .history-section td { border: 1px solid #ccc; padding: 8px; text-align: right; }
+  .history-section th { background-color: #007bff; color: white; text-align: center; }
+  .history-section tr:nth-child(even) { background-color: #f9f9f9; }
+  .history-section tr:hover { background-color: #f1f1f1; }
+  .history-section .money-row td { font-weight: bold; background-color: #e8f5e9; color: #2e7d32; }
+  .rate-input-wrapper { display: flex; align-items: center; gap: 8px; }
+  .rate-input-wrapper input { width: 100px; }
 </style>
 </head>
 <body>
@@ -74,49 +64,33 @@
   <h2>この回の対局履歴</h2>
   <div id="sessionHistory">履歴はまだありません。</div>
 </div>
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import {
-    getFirestore, collection, addDoc, updateDoc, getDocs, getDoc, doc, onSnapshot
-  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, updateDoc, getDocs, getDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBUw-RFVRCQGkEnxy8Uo57Hcer39G0kIUI",
-    authDomain: "mahjong-app-2e2e9.firebaseapp.com",
-    projectId: "mahjong-app-2e2e9",
-    storageBucket: "mahjong-app-2e2e9.appspot.com",
-    messagingSenderId: "440425002404",
-    appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
-  };
-
-  const app  = initializeApp(firebaseConfig);
+  const firebaseConfig = { apiKey: "AIza...", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
+  const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db   = getFirestore(app);
+  const db = getFirestore(app);
 
-  signInAnonymously(auth)
-    .then(() => console.log('🔑 匿名ログイン成功'))
-    .catch(err => console.error('⚠️ 認証失敗:', err));
+  signInAnonymously(auth).catch(console.error);
+  onAuthStateChanged(auth, user => {});
 
-  onAuthStateChanged(auth, user => user ? console.log('👤 ユーザー:', user.uid) : null);
-
-  const playersRef  = collection(db, 'players');
+  const playersRef = collection(db, 'players');
   const sessionsRef = collection(db, 'sessions');
 
   let currentSessionId = localStorage.getItem('currentSessionId') || null;
-  let playerList       = [];
-  let lastGames        = [];
+  let playerList = [];
+  let lastGames = [];
 
-  // 点数→ポイント変換
   function computePoint(score, rank) {
     const base = (score - 30000) / 1000;
-    const oka  = 10;
-    const uma  = {1:30,2:10,3:-10,4:-30};
+    const oka = 10;
+    const uma = {1:30,2:10,3:-10,4:-30};
     return base + oka + (uma[rank]||0);
   }
 
-  // プレイヤー一覧ロード
   async function loadPlayers() {
     const snap = await getDocs(playersRef);
     playerList = snap.docs.map(d => d.data());
@@ -128,135 +102,107 @@
       sel.innerHTML = `<option disabled selected>選択してください</option>` +
         playerList.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
       const inp = document.createElement('input'); inp.type='number'; inp.placeholder='点数'; inp.className='score-input';
-      inp.addEventListener('input', ()=>{
-        updatePointSum(); updateInputColor(inp);
-      });
+      inp.addEventListener('input', () => { updatePointSum(); updateInputColor(inp); });
       row.append(sel, inp);
       container.append(row);
     }
   }
 
-  // 合計ポイント表示
   function updatePointSum() {
     const rows = document.querySelectorAll('.player-row');
-    // 合計スコア計算 (各プレイヤーの点数合計)
     let sumScore = 0;
     const arr = Array.from(rows).map(r => {
       const score = parseFloat(r.querySelector('input').value) || 0;
       sumScore += score;
       return { row: r, score };
     });
-    // ランク判定（スコア降順）
     const sorted = [...arr].sort((a, b) => b.score - a.score);
     const rankMap = new Map();
     sorted.forEach((item, i) => rankMap.set(item.row, i + 1));
-    // 合計ポイント計算
     let sumPoint = 0;
-    arr.forEach(item => {
-      const rank = rankMap.get(item.row);
-      sumPoint += computePoint(item.score, rank);
-    });
-    
+    arr.forEach(item => sumPoint += computePoint(item.score, rankMap.get(item.row)));
     const disp = document.getElementById('pointSumDisplay');
-    // 表示をスコアとポイント両方に
     disp.innerHTML = `合計スコア: ${sumScore.toFixed(0)} (基準 100000)<br>合計ポイント: ${sumPoint.toFixed(1)}`;
-    // 色分け
-    disp.style.color = '';
-    // スコア合計の色
     if (sumScore !== 100000) {
       disp.innerHTML = disp.innerHTML.replace(/合計スコア:[^<]+/, `<span style="color:red;">合計スコア: ${sumScore.toFixed(0)} (要100000)</span>`);
     } else {
       disp.innerHTML = disp.innerHTML.replace(/合計スコア:[^<]+/, `<span style="color:green;">合計スコア: ${sumScore.toFixed(0)} (OK)</span>`);
     }
-  }));
-    const sorted = [...arr].sort((a,b)=>b.score - a.score);
-    const rankMap= new Map(); sorted.forEach((x,i)=>rankMap.set(x.row,i+1));
-    let sum=0; arr.forEach(x=> sum+= computePoint(x.score, rankMap.get(x.row)) );
-    const disp = document.getElementById('pointSumDisplay');
-    disp.textContent = `合計ポイント: ${sum.toFixed(1)}`;
-    disp.style.color = Math.abs(sum)<0.001? 'green':'red';
   }
 
   function updateInputColor(input) {
     const v = parseFloat(input.value);
     input.classList.remove('positive','negative');
-    if (!isNaN(v)) input.classList.add(v<0?'negative':'positive');
+    if (!isNaN(v)) input.classList.add(v < 0 ? 'negative' : 'positive');
   }
 
-  // 保存
   async function saveRecord() {
-    if (!currentSessionId) return alert('先に新セッションを開始してください');
+    if (!currentSessionId) return alert('先に開始してください');
     const date = document.getElementById('gameDate').value;
     const rows = document.querySelectorAll('.player-row');
-    const arr  = Array.from(rows).map(r=>({row:r,score:parseFloat(r.querySelector('input').value)||0}));
-    const sorted = [...arr].sort((a,b)=>b.score - a.score);
-    const rankMap= new Map(); sorted.forEach((x,i)=>rankMap.set(x.row,i+1));
-    const players = arr.map(x=>({id:x.row.querySelector('select').value, point:Number(computePoint(x.score, rankMap.get(x.row)).toFixed(1))}));
-    const sum = players.reduce((a,p)=>a+p.point,0);
-    if (Math.abs(sum)>0.001) return alert('ポイント合計が±0ではありません');
+    const arr = Array.from(rows).map(r => ({ row: r, score: parseFloat(r.querySelector('input').value) || 0 }));
+    const sorted = [...arr].sort((a, b) => b.score - a.score);
+    const rankMap = new Map(); sorted.forEach((x, i) => rankMap.set(x.row, i + 1));
+    const players = arr.map(x => ({ id: x.row.querySelector('select').value, point: Number(computePoint(x.score, rankMap.get(x.row)).toFixed(1)) }));
+    const sum = players.reduce((a, p) => a + p.point, 0);
+    if (Math.abs(sum) > 0.001) return alert('ポイント合計が±0ではありません');
     const ref = doc(db,'sessions',currentSessionId);
-    const snap= await getDoc(ref);
-    const data= snap.data();
-    await updateDoc(ref,{
-      games: [...data.games,{date,players}],
-      players: [...new Set([...data.players,...players.map(p=>p.id)])]
-    });
-    alert('保存しました'); renderSessionHistory([...data.games,{date,players}]);
+    const snap = await getDoc(ref);
+    const data = snap.data();
+    await updateDoc(ref, { games: [...data.games, { date, players }], players: [...new Set([...data.players, ...players.map(p => p.id)])] });
+    alert('保存しました');
+    renderSessionHistory([...data.games, { date, players }]);
   }
 
-  // セッション開始
   window.startNewSession = async function() {
     const date = document.getElementById('gameDate').value;
     if (!date) return alert('日付を選択してください');
-    const docRef = await addDoc(sessionsRef,{title:date,players:[],games:[]});
+    const docRef = await addDoc(sessionsRef, { title: date, players: [], games: [] });
     currentSessionId = docRef.id;
-    localStorage.setItem('currentSessionId',currentSessionId);
+    localStorage.setItem('currentSessionId', currentSessionId);
     alert('新しい回を開始しました');
     renderSessionHistory([]);
   };
 
-  // 履歴テーブル描画
   function renderSessionHistory(games) {
     lastGames = games;
     const container = document.getElementById('sessionHistory');
-    if (!games.length) { container.innerHTML='履歴はまだありません。'; return; }
-    const ids = [...new Set(games.flatMap(g=>g.players.map(p=>p.id)))];
-    const idToName = Object.fromEntries(playerList.map(p=>[p.id,p.name]));
-    let html = '<table><tr><th>日付</th>' + ids.map(id=>`<th>${idToName[id]}</th>`).join('') + '</tr>';
-    const totals = Object.fromEntries(ids.map(id=>[id,0]));
-    games.forEach(game=>{
-      html += `<tr><td>${game.date}</td>` + ids.map(id=>{
-        const pl=game.players.find(p=>p.id===id);
-        const v=pl?pl.point:''; if(pl) totals[id]+=pl.point;
-        const c=pl?(pl.point<0?'red':'blue'):'';
+    if (!games.length) { container.innerHTML = '履歴はまだありません。'; return; }
+    const ids = [...new Set(games.flatMap(g => g.players.map(p => p.id)))];
+    const idToName = Object.fromEntries(playerList.map(p => [p.id, p.name]));
+    let html = '<table><tr><th>日付</th>' + ids.map(id => `<th>${idToName[id]}</th>`).join('') + '</tr>';
+    const totals = Object.fromEntries(ids.map(id => [id, 0]));
+    games.forEach(game => {
+      html += `<tr><td>${game.date}</td>` + ids.map(id => {
+        const pl = game.players.find(p => p.id === id);
+        const v = pl ? pl.point : '';
+        if (pl) totals[id] += pl.point;
+        const c = pl ? (pl.point < 0 ? 'red' : 'blue') : '';
         return `<td style="color:${c}">${v}</td>`;
       }).join('') + '</tr>';
     });
-    // 合計
-    html += '<tr class="money-row"><td>合計</td>' + ids.map(id=>{
-      const v=totals[id].toFixed(1);
-      const c=totals[id]<0?'red':'blue'; return `<td style="color:${c}">${v}</td>`;
+    html += '<tr class="money-row"><td>合計</td>' + ids.map(id => {
+      const v = totals[id].toFixed(1);
+      const c = totals[id] < 0 ? 'red' : 'blue';
+      return `<td style="color:${c}">${v}</td>`;
     }).join('') + '</tr>';
-    // 換算
-    const rate=parseFloat(document.getElementById('rateInput').value||0);
-    html += '<tr class="money-row"><td>換算</td>' + ids.map(id=>{
-      const coin=Math.round(totals[id]*rate);
-      const c=coin<0?'red':'blue'; return `<td style="color:${c}">${coin} コイン</td>`;
+    const rate = parseFloat(document.getElementById('rateInput').value || 0);
+    html += '<tr class="money-row"><td>換算</td>' + ids.map(id => {
+      const coin = Math.round(totals[id] * rate);
+      const c = coin < 0 ? 'red' : 'blue';
+      return `<td style="color:${c}">${coin} コイン</td>`;
     }).join('') + '</tr>';
     html += '</table>';
-    container.innerHTML=html;
+    container.innerHTML = html;
   }
 
-  window.updateSessionTable = ()=>{
-    if (lastGames.length) renderSessionHistory(lastGames);
-  };
+  window.updateSessionTable = () => { if (lastGames.length) renderSessionHistory(lastGames); };
 
-  // 初期化
-  document.addEventListener('DOMContentLoaded', async()=>{
+  document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('gameDate').value = new Date().toISOString().split('T')[0];
     await loadPlayers();
     if (currentSessionId) {
-      const snap=await getDoc(doc(db,'sessions',currentSessionId));
+      const snap = await getDoc(doc(db,'sessions',currentSessionId));
       if (snap.exists()) renderSessionHistory(snap.data().games);
     }
   });
