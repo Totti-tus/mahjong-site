@@ -8,7 +8,7 @@
     body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; }
     h1 { text-align: center; margin-bottom: 20px; }
     .top-nav { text-align: center; margin-bottom: 20px; }
-    .top-nav button { background-color: #007bff; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; }
+    .top-nav button { background-color: #007bff; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
     .top-nav button:hover { background-color: #0056b3; }
     .filter-box { text-align: center; margin-bottom: 20px; }
     .filter-box input { padding: 6px 10px; margin: 0 8px; font-size: 14px; }
@@ -59,6 +59,15 @@
       messagingSenderId: "YOUR_SENDER_ID",
       appId: "YOUR_APP_ID"
     };
+
+    // 設定チェック
+    const container = document.getElementById('historyContainer');
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') {
+      container.innerHTML = '<p class="message">Firebase 設定が未完了です。firebaseConfig を置き換えてください。</p>';
+      console.error('Firebase config missing');
+      throw new Error('Firebase config missing');
+    }
+
     initializeApp(firebaseConfig);
     const db = getFirestore();
     signInAnonymously(getAuth()).catch(console.error);
@@ -72,12 +81,9 @@
     }
 
     function render() {
-      const container = document.getElementById('historyContainer');
-      container.innerHTML = '';
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
 
-      // 各ゲームを範囲内でフィルタ
       const sessionsToShow = allSessions
         .map(session => ({
           id: session.id,
@@ -94,6 +100,7 @@
         return;
       }
 
+      container.innerHTML = '';
       sessionsToShow.forEach(session => {
         const details = document.createElement('details');
         details.className = 'session';
@@ -133,7 +140,6 @@
         container.appendChild(details);
       });
 
-      // イベント再設定
       document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick = deleteGame);
       document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit = addGame);
     }
@@ -162,7 +168,8 @@
     onSnapshot(collection(db, 'sessions'), snap => {
       allSessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       render();
-    }, err => { console.error(err); document.getElementById('historyContainer').innerHTML = '<p class="message">取得エラー</p>'; });
+    }, err => { console.error(err); container.innerHTML = '<p class="message">取得エラー</p>'; });
+
     document.getElementById('startDate').addEventListener('change', render);
     document.getElementById('endDate').addEventListener('change', render);
     loadPlayers();
