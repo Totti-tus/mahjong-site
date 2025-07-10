@@ -100,13 +100,31 @@
     return base + oka + (uma[rank] || 0);
   }
 
+  // プレイヤー名選択をローカルに保存
+  function saveSelections() {
+    const selections = Array.from(document.querySelectorAll('.player-row select')).map(sel => sel.value);
+    localStorage.setItem('playerSelections', JSON.stringify(selections));
+  };
+    return base + oka + (uma[rank] || 0);
+  }
+
   // プレイヤー入力欄を生成
   async function loadPlayers() {
+    // 以前の選択を復元
+    const savedSelections = JSON.parse(localStorage.getItem('playerSelections') || '[]');
     const snap = await getDocs(playersRef);
     playerList = snap.docs.map(d => d.data());
     const container = document.getElementById('playersContainer');
     container.innerHTML = '';
     for (let i = 0; i < 4; i++) {
+      const row = document.createElement('div'); row.className = 'player-row';
+      const select = document.createElement('select');
+      select.innerHTML = `<option disabled selected>選択してください</option>` +
+        playerList.map(p => `<option value=\"${p.id}\">${p.name}</option>`).join('');
+      // 前回の選択を適用
+      if (savedSelections[i]) select.value = savedSelections[i];
+      // 選択変更時に保存
+      select.addEventListener('change', saveSelections);
       const row = document.createElement('div'); row.className = 'player-row';
       const select = document.createElement('select');
       select.innerHTML = `<option disabled selected>選択してください</option>` +
