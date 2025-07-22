@@ -57,7 +57,7 @@
   <label for="rateInput">レート（1ポイントあたり）：</label>
   <div class="rate-input-wrapper">
     <input id="rateInput" oninput="updateSessionTable()" type="number" value="50"/>
-    <span>コイン</span>
+    <span>円</span>
   </div>
 </div>
 <div class="history-section">
@@ -229,7 +229,7 @@ window.saveRecord = saveRecord;
     const rate = parseFloat(document.getElementById('rateInput').value||0);
     html += '<tr class="money-row"><td>換算</td>' + ids.map(id=>{
       const coin=Math.round(totals[id]*rate); const c=coin<0?'red':'blue';
-      return `<td style="color:${c}">${coin} コイン</td>`;
+      return `<td style="color:${c}">${coin} 円</td>`;
     }).join('') + '</tr>';
     html += '</table>'; container.innerHTML = html;
   }
