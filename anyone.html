@@ -345,13 +345,152 @@
     if(document.readyState!=='loading') boot(); else document.addEventListener('DOMContentLoaded', boot);
   </script>
 <script>
-// 保険: ボタンが無効化される環境向けのクリック委譲
+/* 臨時スコア登録 — 安定版（テンプレ文字列/$不使用） */
 (function(){
-  function on(id,fn){document.addEventListener('click',e=>{if(e.target.closest(id)){ e.preventDefault(); try{ fn(); }catch(_){} }},true)}
-  on('#addBtn', ()=>{ if(typeof addSession==='function') addSession(); });
-  on('#applyNamesBtn', ()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
-  on('#resetResultsBtn', ()=>{ if(confirm('当日の一覧とチップ入力をリセットします。よろしいですか？
-（設定・参加者は残ります）')){ LS.save(LSK.sessions,[]); LS.save(LSK.chips,{}); buildChipGrid(); renderSessions(); } });
+  // --- helpers ---
+  var qs=function(s,r){return (r||document).querySelector(s)};
+  var qsa=function(s,r){return Array.from((r||document).querySelectorAll(s))};
+  var LS={save:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+          load:function(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}};
+  var LSK={settings:'scoreV6.settings', names:'scoreV6.names', sessions:'scoreV6.sessions', chips:'scoreV6.chips'};
+  var DEFAULTS={4:{start:25000,target:30000,uma:'20,10,-10,-20'},3:{start:35000,target:35000,uma:'20,0,-20'}};
+
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+  var fiveSix=function(x){var r=((x%100)+100)%100; return r<=50?x-r:x+(100-r)};
+  var adjust=function(x,mode){return mode==='fiveSix'?fiveSix(x):x};
+  var defaultUma=function(n){return n===3?[20,0,-20]:[20,10,-10,-20]};
+  var parseUma=function(str,n){ if(!str||!String(str).trim()) return defaultUma(n);
+    var a=String(str).split(/[,、\s]+/).map(function(s){return s.trim()}).filter(Boolean).map(Number);
+    if(a.length!==n||a.some(function(v){return Number.isNaN(v)})) throw new Error('ウマは人数('+n+')に合わせて'+n+'個'); return a; };
+  var parseNames=function(txt,n){ var list=String(txt||'').split(/[\n,、,]+/).map(function(s){return s.trim()}).filter(Boolean);
+    while(list.length<n) list.push('P'+(list.length+1)); return list.slice(0,n)};
+
+  function applyPlaceholders(){ var n=Number(qs('#playerCount').value||4), d=DEFAULTS[n];
+    qs('#startPoints').placeholder=String(d.start); qs('#targetPoints').placeholder=String(d.target); qs('#uma').placeholder=d.uma; }
+  function getSettings(){ return { n:Number(qs('#playerCount').value||4),
+    start:Number(qs('#startPoints').value||0), target:Number(qs('#targetPoints').value||0),
+    umaStr:qs('#uma').value, rounding:qs('#rounding').value, tie:qs('#tiePolicy').value,
+    rate:Number(qs('#rateYen').value||0), chipYen:Number(qs('#chipYen').value||0) }; }
+  function setSettings(s){ qs('#playerCount').value=String(s.n!=null?s.n:4);
+    qs('#startPoints').value=s.start!=null?s.start:''; qs('#targetPoints').value=s.target!=null?s.target:'';
+    qs('#uma').value=s.umaStr!=null?s.umaStr:''; qs('#rounding').value=s.rounding||'fiveSix';
+    qs('#tiePolicy').value=s.tie||'avg'; qs('#rateYen').value=s.rate!=null?s.rate:50; qs('#chipYen').value=s.chipYen!=null?s.chipYen:'';
+    applyPlaceholders(); }
+  function saveSettings(){ LS.save(LSK.settings,getSettings()); }
+  function applyTieUI(){ var show=qs('#tiePolicy').value==='input'; qsa('.rankCol').forEach(function(e){ e.style.display=show?'':'none'; }); }
+
+  function buildScoreRows(){ var n=Number(qs('#playerCount').value||4), names=LS.load(LSK.names,parseNames(qs('#nameList').value,n));
+    var wrap=qs('#scores'), html=''; for(var i=0;i<n;i++){ var nm=names[i]||('P'+(i+1)), opts='';
+      for(var k=1;k<=n;k++){ opts+='<option value="'+k+'">'+k+'</option>'; }
+      html+='<div class="row oneRow">'
+           +  '<div style="flex:0 0 96px"><label>名前</label><div class="nameDisp">'+esc(nm)+'</div></div>'
+           +  '<div><label>素点</label><input type="number" class="p-score" step="100" placeholder="" /></div>'
+           +  '<div class="rankCol"><label>着順</label><select class="p-rank">'+opts+'</select></div>'
+           +'</div>'; }
+    wrap.innerHTML=html; applyTieUI(); }
+
+  function buildChipGrid(){ var n=Number(qs('#playerCount').value||4), names=LS.load(LSK.names,parseNames(qs('#nameList').value,n));
+    var wrap=qs('#chipGrid'), saved=LS.load(LSK.chips,{}), html=''; for(var i=0;i<n;i++){ var nm=names[i]||('P'+(i+1));
+      var val=saved[nm]!=null?saved[nm]:'';
+      html+='<div><label class="nameDisp">'+esc(nm)+'</label><input type="number" class="c-chips" step="1" placeholder="" value="'+val+'" data-name="'+esc(nm)+'"/></div>'; }
+    wrap.innerHTML=html;
+    qsa('.c-chips',wrap).forEach(function(inp){ inp.addEventListener('input',function(){
+      var chips=LS.load(LSK.chips,{}), v=inp.value===''? '' : Number(inp.value||0); chips[inp.dataset.name]=v; LS.save(LSK.chips,chips);
+      renderSessions(); updateChipWarning(); }); });
+    updateChipWarning(); }
+  function updateChipWarning(){ var chips=LS.load(LSK.chips,{}),
+      sum=Object.values(chips).map(function(v){return Number(v||0)}).reduce(function(a,b){return a+b},0);
+    qs('#chipInfo').textContent = sum!==0 ? '注意: チップ合計が±0ではありません（合計: '+sum+'枚）' : ''; }
+
+  function computeSession(){
+    var set=getSettings(), n=set.n, uma=parseUma(set.umaStr,n);
+    if(!set.start||!set.target) throw new Error('開始持ち点と返し基準を入力してください');
+    var overflow=(set.target-set.start)*n, okaPt=overflow/1000, rankPts=uma.slice(); rankPts[0]=(rankPts[0]||0)+okaPt;
+    var names=LS.load(LSK.names,[]), rows=qsa('#scores .oneRow');
+    var players=rows.map(function(row,i){ var sc=qs('.p-score',row).value; if(sc===''||sc==null) throw new Error('素点を全員分入力してください');
+      return { name:names[i]||('P'+(i+1)), score:Number(sc), rank:Number(qs('.p-rank',row).value||0) }; });
+    var ranked;
+    if(set.tie==='avg'){ var sorted=players.slice().sort(function(a,b){return b.score-a.score});
+      ranked=players.map(function(p){return {name:p.name, score:p.score, rank:p.rank}});
+      var idx=new Map(players.map(function(p,i){return [p.name,i]})), i=0, place=1;
+      while(i<sorted.length){ var scv=sorted[i].score, j=i; while(j<sorted.length&&sorted[j].score===scv) j++;
+        var size=j-i, sum=0; for(var t=place-1;t<place-1+size;t++){ sum+=rankPts[t]||0 } var avgPt=sum/size;
+        for(var k=i;k<j;k++){ var oi=idx.get(sorted[k].name); ranked[oi].rank=place; ranked[oi].rankPt=avgPt; } place+=size; i=j; } }
+    else { var setRanks=new Set(players.map(function(p){return p.rank}));
+      if(setRanks.size!==players.length) throw new Error('着順が重複');
+      var min=Math.min.apply(null,players.map(function(p){return p.rank})), max=Math.max.apply(null,players.map(function(p){return p.rank}));
+      if(min!==1||max!==players.length) throw new Error('着順は1〜人数');
+      ranked=players.map(function(p){ return {name:p.name, score:p.score, rank:p.rank, rankPt:rankPts[p.rank-1]}; }); }
+    var results=ranked.map(function(p){ var base=(adjust(p.score,set.rounding)-30000)/1000; return {name:p.name, score:p.score, rank:p.rank, pt:(p.rankPt||0)+base}; });
+    return {settings:set, results:results};
+  }
+
+  function renderSessions(){
+    var sessions=LS.load(LSK.sessions,[]), names=LS.load(LSK.names,[]), wrap=qs('#sessionsWrap');
+    if(!sessions.length){ wrap.textContent='まだ追加されていません。'; return; }
+    var totals={}; names.forEach(function(nm){ totals[nm]=0; });
+    sessions.forEach(function(s){ names.forEach(function(nm){ var r=s.results.find(function(x){return x.name===nm}); totals[nm]+= r? r.pt:0; }); });
+    var chips=LS.load(LSK.chips,{}), set=LS.load(LSK.settings,getSettings()), rate=set.rate||1, chipYen=set.chipYen||0, chipPts={};
+    names.forEach(function(nm){ chipPts[nm]=(Number(chips[nm]||0)*chipYen)/rate; });
+    var html='<table><colgroup>', i; for(i=0;i<names.length+3;i++){ html+='<col>'; } html+='</colgroup><thead><tr><th>#</th>';
+    names.forEach(function(nm){ html+='<th>'+esc(nm)+'</th>'; }); html+='<th>合計pt</th><th>操作</th></tr></thead><tbody>';
+    sessions.forEach(function(s,idx){ var rowSum=0; html+='<tr data-id="'+s.id+'"><td>'+(idx+1)+'</td>';
+      names.forEach(function(nm){ var r=s.results.find(function(x){return x.name===nm}); var v=r? r.pt:0; rowSum+=v; html+='<td>'+fmtPt(v)+'</td>'; });
+      html+='<td>'+fmtPt(rowSum)+'</td><td><button class="btn" data-act="edit">編集</button> <button class="btn ghost" data-act="del">削除</button></td></tr>'; });
+    html+='</tbody><tfoot><tr><td>当日計</td>'; names.forEach(function(nm){ html+='<td>'+fmtPt(totals[nm])+'</td>'; });
+    var sumAll=Object.values(totals).reduce(function(a,b){return a+b},0); html+='<td>'+fmtPt(sumAll)+'</td><td></td></tr>';
+    html+='<tr><td>チップpt(のみ)</td>'; names.forEach(function(nm){ html+='<td>'+fmtPt(chipPts[nm])+'</td>'; });
+    var sumChip=Object.values(chipPts).reduce(function(a,b){return a+b},0); html+='<td>'+fmtPt(sumChip)+'</td><td></td></tr>';
+    if(set.rate>0){ html+='<tr><td>当日計(円)</td>'; var yenTotal=0; names.forEach(function(nm){ var yen=Math.round((totals[nm]+chipPts[nm])*set.rate); yenTotal+=yen; html+='<td>'+yen.toLocaleString()+'</td>'; });
+      html+='<td>'+yenTotal.toLocaleString()+'</td><td></td></tr>'; }
+    html+='</tfoot></table>'; wrap.innerHTML=html;
+    qsa('button[data-act=edit]',wrap).forEach(function(b){ b.addEventListener('click',onEdit) });
+    qsa('button[data-act=del]',wrap).forEach(function(b){ b.addEventListener('click',onDelete) });
+  }
+
+  function onEdit(ev){ var id=Number(ev.target.closest('tr').dataset.id), sessions=LS.load(LSK.sessions,[]),
+      s=sessions.find(function(x){return x.id===id}); if(!s) return; editingId=id; setSettings(s.settings); saveSettings();
+    var names=LS.load(LSK.names,[]); buildScoreRows(); var map={}; s.results.forEach(function(r){ map[r.name]=r.score; });
+    var rows=qsa('#scores .oneRow'); rows.forEach(function(row,i){ var nm=names[i], sc=map[nm]; qs('.p-score',row).value=(sc!=null)?sc:''; });
+    window.scrollTo({top:0,behavior:'smooth'}); qs('#addBtn').textContent='編集を上書き保存'; qs('#addBtn').onclick=saveEdit; }
+
+  var editingId=null, addLock=false;
+  function saveEdit(){ if(addLock) return; addLock=true; qs('#warn').textContent='';
+    try{ var payload=computeSession(), sessions=LS.load(LSK.sessions,[]), idx=sessions.findIndex(function(x){return x.id===editingId});
+      if(idx>=0){ sessions[idx].settings=payload.settings; sessions[idx].results=payload.results; }
+      LS.save(LSK.sessions,sessions); editingId=null; qs('#addBtn').textContent='計算して一覧に追加'; qs('#addBtn').onclick=addSession; renderSessions(); resetScores();
+    }catch(e){ qs('#warn').textContent=e.message; } finally { addLock=false; } }
+  function onDelete(ev){ var id=Number(ev.target.closest('tr').dataset.id); if(!confirm('この行を削除しますか？')) return;
+    var sessions=LS.load(LSK.sessions,[]).filter(function(s){return s.id!==id}); LS.save(LSK.sessions,sessions); renderSessions(); }
+  function resetScores(){ qsa('.p-score').forEach(function(el){ el.value='' }); }
+  function addSession(){ if(addLock) return; addLock=true; qs('#warn').textContent='';
+    try{ var payload=computeSession(), sessions=LS.load(LSK.sessions,[]); sessions.push({ id:Date.now(), createdAt:new Date().toISOString(), settings:payload.settings, results:payload.results });
+      LS.save(LSK.sessions,sessions); LS.save(LSK.settings,payload.settings); renderSessions(); resetScores();
+    }catch(e){ qs('#warn').textContent=e.message; } finally { addLock=false; } }
+
+  function attach(){
+    ['startPoints','targetPoints','uma','rounding','tiePolicy','rateYen','chipYen'].forEach(function(id){
+      qs('#'+id).addEventListener('input',function(){ saveSettings(); renderSessions(); applyTieUI(); }); });
+    qs('#playerCount').addEventListener('change',function(){ var n=Number(qs('#playerCount').value||4), d=DEFAULTS[n];
+      if(!qs('#startPoints').value) qs('#startPoints').value=d.start; if(!qs('#targetPoints').value) qs('#targetPoints').value=d.target;
+      applyPlaceholders(); var names=parseNames(qs('#nameList').value,n); LS.save(LSK.names,names); saveSettings(); buildScoreRows(); buildChipGrid(); renderSessions(); });
+    qs('#applyNamesBtn').addEventListener('click',function(){ var n=Number(qs('#playerCount').value||4), names=parseNames(qs('#nameList').value,n);
+      LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
+    qs('#addBtn').addEventListener('click',addSession);
+    qs('#resetResultsBtn').addEventListener('click',function(){ if(confirm('当日の一覧とチップ入力をリセットします。よろしいですか？\n（設定・参加者は残ります）')){ LS.save(LSK.sessions,[]); LS.save(LSK.chips,{}); buildChipGrid(); renderSessions(); } });
+  }
+
+  function boot(){
+    var loaded=LS.load(LSK.settings,null); if(loaded){ setSettings(loaded); } else { setSettings({n:4, rounding:'fiveSix', tie:'avg', rate:50}); }
+    applyPlaceholders(); var nSel=Number(qs('#playerCount').value||4), d=DEFAULTS[nSel];
+    if(!qs('#startPoints').value) qs('#startPoints').value=d.start; if(!qs('#targetPoints').value) qs('#targetPoints').value=d.target;
+    var names=LS.load(LSK.names,parseNames(qs('#nameList').value,nSel)); LS.save(LSK.names,names); qs('#nameList').value=names.join(', ');
+    buildScoreRows(); buildChipGrid(); attach(); renderSessions();
+  }
+
+  function fmtPt(n){ var x=Math.round((Number(n)||0)*100)/100; return (x>0?'+':'')+x.toFixed(2) }
+
+  if(document.readyState!=='loading') boot(); else document.addEventListener('DOMContentLoaded', boot);
 })();
 </script>
 </body>
