@@ -81,7 +81,7 @@
           <div class="row">
             <div>
               <label>ウマ（人数分・カンマ）</label>
-              <input id="uma" type="text" placeholder="4人: 30,10,-10,-30 / 3人: 20,0,-20" />
+              <input id="uma" type="text" placeholder="4人: 20,10,-10,-20 / 3人: 20,0,-20" />
             </div>
             <div>
               <label>端数処理</label>
@@ -189,7 +189,7 @@
     const LS={save:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}, load:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}};
     const LSK={settings:'scoreV6.settings', names:'scoreV6.names', sessions:'scoreV6.sessions', chips:'scoreV6.chips'};
 
-    function defaultUma(n){return n===3?[20,0,-20]:[30,10,-10,-30]}
+    function defaultUma(n){return n===3?[20,0,-20]:[20,10,-10,-20]}
     function parseUma(str,n){if(!str||!String(str).trim())return defaultUma(n); const a=String(str).split(/[,、\s]+/).map(s=>s.trim()).filter(Boolean).map(Number); if(a.length!==n||a.some(Number.isNaN)) throw new Error(`ウマは人数(${n})に合わせて${n}個`); return a}
     function fiveSix(x){const r=((x%100)+100)%100; return r<=50?x-r:x+(100-r)}
     function adjust(x,mode){return mode==='fiveSix'?fiveSix(x):x}
@@ -304,7 +304,9 @@
 
     function addSession(){ $('#warn').textContent=''; try{ const payload=computeSession(); const sessions=LS.load(LSK.sessions,[]); sessions.push({ id:Date.now(), createdAt:new Date().toISOString(), settings:payload.settings, results:payload.results }); LS.save(LSK.sessions,sessions); LS.save(LSK.settings,payload.settings); renderSessions(); resetScores(); } catch(e){ $('#warn').textContent=e.message; } }
 
-    function attach(){ $('#playerCount').addEventListener('change',()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
+    function attach(){ $('#playerCount').addEventListener('change',()=>{ const n=Number($('#playerCount').value||4); // 空欄なら人数に応じたデフォルトを補完
+  if(n===4){ if(!$('#startPoints').value) $('#startPoints').value=25000; if(!$('#targetPoints').value) $('#targetPoints').value=30000; } else if(n===3){ if(!$('#startPoints').value) $('#startPoints').value=35000; if(!$('#targetPoints').value) $('#targetPoints').value=35000; }
+  const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
       ['startPoints','targetPoints','uma','rounding','tiePolicy','rateYen','chipYen'].forEach(id=>{ const el=$('#'+id); el.addEventListener('input',()=>{ LS.save(LSK.settings,getSettings()); renderSessions(); applyTieUI(); }); });
       $('#applyNamesBtn').addEventListener('click',()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
       $('#addBtn').addEventListener('click',addSession);
@@ -312,7 +314,9 @@
       $('#resetResultsBtn').addEventListener('click',()=>{ if(confirm('当日の一覧とチップ入力をリセットします。よろしいですか？\n（設定・参加者は残ります）')){ LS.save(LSK.sessions,[]); LS.save(LSK.chips,{}); buildChipGrid(); renderSessions(); } });
     }
 
-    function boot(){ const set=LS.load(LSK.settings,{rate:50}); if(set) setSettings(set); const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); LS.save(LSK.names,names); $('#nameList').value=names.join(', '); buildScoreRows(); buildChipGrid(); attach(); renderSessions(); }
+    function boot(){ const loaded=LS.load(LSK.settings,null); if(loaded) setSettings(loaded); else setSettings({rate:50}); const nSel=Number($('#playerCount').value||4); // デフォルトの開始/返し（空欄なら補完）
+  if(!$('#startPoints').value || !$('#targetPoints').value){ if(nSel===4){ if(!$('#startPoints').value) $('#startPoints').value=25000; if(!$('#targetPoints').value) $('#targetPoints').value=30000; } else if(nSel===3){ if(!$('#startPoints').value) $('#startPoints').value=35000; if(!$('#targetPoints').value) $('#targetPoints').value=35000; } }
+  const names=LS.load(LSK.names,parseNames($('#nameList').value,nSel)); LS.save(LSK.names,names); $('#nameList').value=names.join(', '); buildScoreRows(); buildChipGrid(); attach(); renderSessions(); }); if(set) setSettings(set); const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); LS.save(LSK.names,names); $('#nameList').value=names.join(', '); buildScoreRows(); buildChipGrid(); attach(); renderSessions(); }
 
     // helpers
     function fmtPt(n){const x=Math.round((Number(n)||0)*100)/100; return (x>0?'+':'')+x.toFixed(2)}
@@ -320,5 +324,15 @@
 
     if(document.readyState!=='loading') boot(); else document.addEventListener('DOMContentLoaded', boot);
   </script>
+<script>
+// 保険: ボタンが無効化される環境向けのクリック委譲
+(function(){
+  function on(id,fn){document.addEventListener('click',e=>{if(e.target.closest(id)){ e.preventDefault(); try{ fn(); }catch(_){} }},true)}
+  on('#addBtn', ()=>{ if(typeof addSession==='function') addSession(); });
+  on('#applyNamesBtn', ()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
+  on('#resetResultsBtn', ()=>{ if(confirm('当日の一覧とチップ入力をリセットします。よろしいですか？
+（設定・参加者は残ります）')){ LS.save(LSK.sessions,[]); LS.save(LSK.chips,{}); buildChipGrid(); renderSessions(); } });
+})();
+</script>
 </body>
 </html>
