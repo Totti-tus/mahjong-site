@@ -14,8 +14,9 @@
       background:radial-gradient(1000px 600px at 10% -10%,#1b2144 0%,transparent 60%),
                  radial-gradient(800px 500px at 90% 10%,#0f2333 0%,transparent 55%),
                  linear-gradient(160deg,var(--bg1),var(--bg2));}
-    header{position:sticky;top:0;padding:10px 12px;background:#0b0f1acc;border-bottom:1px solid var(--border);backdrop-filter:blur(8px);z-index:10}
-    header h1{margin:0;font-size:17px}
+    header{position:sticky;top:0;padding:10px 12px;background:#0b0f1acc;border-bottom:1px solid var(--border);backdrop-filter:blur(8px);z-index:10;display:flex;align-items:center;gap:10px}
+    header h1{margin:0;font-size:17px;flex:1}
+    .head-actions{display:flex;gap:8px}
     main{max-width:980px;margin:16px auto;padding:0 10px 48px;display:grid;gap:12px;grid-template-columns:1fr}
     @media(min-width:960px){main{grid-template-columns:380px 1fr}}
     .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
@@ -29,7 +30,7 @@
     textarea{min-height:64px}
     .row{display:flex;gap:8px;flex-wrap:wrap}
     .row>div{flex:1 1 140px}
-    .btn{border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));padding:8px 12px;border-radius:10px;cursor:pointer}
+    .btn{border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));padding:8px 12px;border-radius:10px;cursor:pointer;color:var(--text);text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
     .btn.primary{background:linear-gradient(180deg,#2dd6ff33,#2dd6ff11);border-color:#2dd6ff55;color:#ccf8ff}
     .btn.ghost{background:transparent}
     .muted{color:var(--muted);font-size:12px}
@@ -48,6 +49,10 @@
 <body>
   <header>
     <h1>臨時スコア登録</h1>
+    <div class="head-actions">
+      <a class="btn ghost" href="index.html">ホームへ戻る</a>
+      <button class="btn" id="resetAllBtn" title="当日の成績とチップ累計をリセット">成績をリセット</button>
+    </div>
   </header>
   <main>
 
@@ -168,13 +173,13 @@
 
     function buildScoreRows(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#scores'); wrap.innerHTML=''; for(let i=0;i<n;i++){ const t=document.importNode($('#scoreRowTpl').content,true); t.querySelector('.nameDisp').textContent=names[i]||('P'+(i+1)); const sel=t.querySelector('.p-rank'); sel.innerHTML=''; for(let k=1;k<=n;k++){ const o=document.createElement('option'); o.value=String(k); o.textContent=String(k); sel.appendChild(o);} wrap.appendChild(t);} applyTieUI(); }
 
-    function buildChipGrid(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#chipGrid'); wrap.innerHTML=''; const saved=LS.load(LSK.chips,{}); for(let i=0;i<n;i++){ const t=document.importNode($('#chipCellTpl').content,true); $('.nameDisp',t).textContent=names[i]||('P'+(i+1)); const input=$('.c-chips',t); input.value = saved[names[i]] ?? ''; input.dataset.name = names[i]; input.addEventListener('input',()=>{ const chips=LS.load(LSK.chips,{}); const v = input.value===''? '' : Number(input.value||0); chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); }); wrap.appendChild(t);} updateChipInfo(); }
+    function buildChipGrid(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#chipGrid'); wrap.innerHTML=''; const saved=LS.load(LSK.chips,{}); for(let i=0;i<n;i++){ const t=document.importNode($('#chipCellTpl').content,true); $('.nameDisp',t).textContent=names[i]||('P'+(i+1)); const input=$('.c-chips',t); input.value = saved[names[i]] ?? ''; input.dataset.name = names[i]; input.addEventListener('input',()=>{ const chips=LS.load(LSK.chips,{}); const v = input.value===''? '' : Number(input.value||0); chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); updateChipInfo(); }); wrap.appendChild(t);} updateChipInfo(); }
 
     function updateChipInfo(){ const chips=LS.load(LSK.chips,{}); const sum = Object.values(chips).map(v=>Number(v||0)).reduce((a,b)=>a+b,0); $('#chipInfo').textContent = sum!==0 ? `注意: チップ合計が±0ではありません（合計: ${sum}枚）` : '';
     }
 
-    function getSettings(){ return { n:Number($('#playerCount').value||4), start:Number($('#startPoints').value||0), target:Number($('#targetPoints').value||0), umaStr:$('#uma').value, rounding:$('#rounding').value, tie:$('#tiePolicy').value, rate:Number($('#rateYen').value||0), chipYen:Number($('#chipYen').value||0) }; }
-    function setSettings(s){ $('#playerCount').value=String(s.n||4); $('#startPoints').value=s.start||''; $('#targetPoints').value=s.target||''; $('#uma').value=s.umaStr||''; $('#rounding').value=s.rounding||'fiveSix'; $('#tiePolicy').value=s.tie||'avg'; $('#rateYen').value=s.rate??50; $('#chipYen').value=s.chipYen||''; }
+    function getSettings(){ return { n:Number($('#playerCount').value||4), start:Number($('#startPoints').value||0), target:Number($('#targetPoints').value||0), umaStr:$('#uma').value, rounding:$('#rounding').value, tie:Number($('#tiePolicy').value? $('#tiePolicy').value: 'avg')==="input"?"input":"avg", rate:Number($('#rateYen').value||0), chipYen:Number($('#chipYen').value||0) }; }
+    function setSettings(s){ $('#playerCount').value=String(s.n||4); $('#startPoints').value=s.start||''; $('#targetPoints').value=s.target||''; $('#uma').value=s.umaStr||''; $('#rounding').value=s.rounding||'fiveSix'; $('#tiePolicy').value=s.tie||'avg'; $('#rateYen').value=(s.rate??50); $('#chipYen').value=s.chipYen||''; }
 
     function applyTieUI(){ const show=$('#tiePolicy').value==='input'; $$('.rankCol').forEach(e=>e.style.display=show?'':'none'); }
 
@@ -233,6 +238,15 @@
       ['startPoints','targetPoints','uma','rounding','tiePolicy','rateYen','chipYen'].forEach(id=>{ const el=$('#'+id); el.addEventListener('input',()=>{ LS.save(LSK.settings,getSettings()); renderSessions(); }); });
       $('#applyNamesBtn').addEventListener('click',()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
       $('#addBtn').addEventListener('click',addSession);
+      // 追加: リセットボタン
+      $('#resetAllBtn').addEventListener('click',()=>{
+        if(!confirm('当日の一覧とチップ累計を全て削除します。よろしいですか？')) return;
+        LS.save(LSK.sessions, []);
+        LS.save(LSK.chips, {});
+        renderSessions();
+        buildChipGrid();
+        resetScores();
+      });
     }
 
     function boot(){ const set=LS.load(LSK.settings,{rate:50}); if(set) setSettings(set); const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); LS.save(LSK.names,names); $('#nameList').value=names.join(', '); buildScoreRows(); buildChipGrid(); attach(); renderSessions(); }
