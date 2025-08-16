@@ -6,33 +6,33 @@
   <title>臨時スコア登録</title>
   <style>
     :root{
-      --bg1:#101426; --bg2:#1a1f34; --card:#14182acc; --border:#2b3150; --muted:#98a2b3; --text:#eef3ff;
-      --accent:#6be4ff; --good:#20e3aa; --warn:#ffbe5e; --bad:#ff6b6b;
+      --bg1:#101426; --bg2:#1a1f34; --card:#14182cc; --border:#2b3150; --muted:#98a2b3; --text:#eef3ff;
+      --accent:#6be4ff; --warn:#ffbe5e; --good:#20e3aa; --bad:#ff6b6b;
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Roboto,Segoe UI,"Noto Sans JP",sans-serif;color:var(--text);
       background:radial-gradient(1000px 600px at 10% -10%,#1b2144 0%,transparent 60%),
                  radial-gradient(800px 500px at 90% 10%,#0f2333 0%,transparent 55%),
                  linear-gradient(160deg,var(--bg1),var(--bg2));}
-    header{position:sticky;top:0;padding:10px 12px;background:#0b0f1acc;border-bottom:1px solid var(--border);backdrop-filter:blur(8px);z-index:10;display:flex;align-items:center;justify-content:space-between;gap:8px}
+    header{position:sticky;top:0;padding:10px 12px;background:#0b0f1acc;border-bottom:1px solid var(--border);backdrop-filter:blur(8px);z-index:10;display:flex;align-items:center;justify-content:space-between}
     header h1{margin:0;font-size:17px}
     .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));padding:8px 12px;border-radius:10px;cursor:pointer;color:var(--text);text-decoration:none}
+    .btn.primary{background:linear-gradient(180deg,#2dd6ff33,#2dd6ff11);border-color:#2dd6ff55;color:#ccf8ff}
+    .btn.ghost{background:transparent}
     main{max-width:980px;margin:16px auto;padding:0 10px 48px;display:grid;gap:12px;grid-template-columns:1fr}
     @media(min-width:960px){main{grid-template-columns:380px 1fr}}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px}
     .card h2{margin:0;padding:10px 12px;border-bottom:1px solid var(--border);font-size:14px}
     .content{padding:10px 12px}
     fieldset{border:1px solid var(--border);border-radius:10px;margin:0 0 10px}
     legend{padding:0 6px;color:var(--muted);font-size:12px}
     label{display:block;color:var(--muted);font-size:12px;margin:8px 0 4px}
-    input,select,textarea,button{font:inherit;color:var(--text)}
+    input,select,textarea{font:inherit;color:var(--text)}
     input[type=number],input[type=text],select,textarea{width:100%;padding:8px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.04)}
     textarea{min-height:64px}
     .row{display:flex;gap:8px;flex-wrap:wrap}
     .row>div{flex:1 1 140px}
-    .btn{border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));padding:8px 12px;border-radius:10px;cursor:pointer;color:var(--text);text-decoration:none;display:inline-block}
-    .btn.primary{background:linear-gradient(180deg,#2dd6ff33,#2dd6ff11);border-color:#2dd6ff55;color:#ccf8ff}
-    .btn.ghost{background:transparent}
     .muted{color:var(--muted);font-size:12px}
     table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
     th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -41,8 +41,8 @@
     tfoot td{font-weight:600;background:linear-gradient(180deg,transparent,rgba(255,255,255,.03))}
     .nameDisp{font-weight:600}
     .rankCol{display:none}
-    .small{font-size:12px}
     .chipGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
+    .small{font-size:12px}
   </style>
 </head>
 <body>
@@ -124,13 +124,39 @@
     <section class="card">
       <h2>点数入力 → すぐ追加</h2>
       <div class="content">
-        <div id="scores"></div>
+        <div id="scores">
+  <div class="row oneRow">
+    <div style="flex:0 0 96px"><label>名前</label><div class="nameDisp">P1</div></div>
+    <div><label>素点</label><input type="number" class="p-score" step="100" placeholder="" /></div>
+    <div class="rankCol"><label>着順</label><select class="p-rank"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+  </div>
+  <div class="row oneRow">
+    <div style="flex:0 0 96px"><label>名前</label><div class="nameDisp">P2</div></div>
+    <div><label>素点</label><input type="number" class="p-score" step="100" placeholder="" /></div>
+    <div class="rankCol"><label>着順</label><select class="p-rank"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+  </div>
+  <div class="row oneRow">
+    <div style="flex:0 0 96px"><label>名前</label><div class="nameDisp">P3</div></div>
+    <div><label>素点</label><input type="number" class="p-score" step="100" placeholder="" /></div>
+    <div class="rankCol"><label>着順</label><select class="p-rank"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+  </div>
+  <div class="row oneRow">
+    <div style="flex:0 0 96px"><label>名前</label><div class="nameDisp">P4</div></div>
+    <div><label>素点</label><input type="number" class="p-score" step="100" placeholder="" /></div>
+    <div class="rankCol"><label>着順</label><select class="p-rank"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+  </div>
+</div>
         <div class="muted small">※ 同点は「同順位平均/入力した着順」を設定で切替。平均のとき着順入力欄は非表示。</div>
         <div style="margin-top:8px"><button class="btn primary" id="addBtn">計算して一覧に追加</button><span id="warn" class="muted" style="margin-left:10px"></span></div>
 
         <fieldset style="margin-top:10px">
           <legend>チップ（当日累計・任意 / 円換算は自動）</legend>
-          <div id="chipGrid" class="chipGrid"></div>
+          <div id="chipGrid" class="chipGrid">
+  <div><label class="nameDisp">P1</label><input type="number" class="c-chips" step="1" placeholder="" /></div>
+  <div><label class="nameDisp">P2</label><input type="number" class="c-chips" step="1" placeholder="" /></div>
+  <div><label class="nameDisp">P3</label><input type="number" class="c-chips" step="1" placeholder="" /></div>
+  <div><label class="nameDisp">P4</label><input type="number" class="c-chips" step="1" placeholder="" /></div>
+</div>
           <div class="muted small" id="chipInfo"></div>
         </fieldset>
       </div>
@@ -161,7 +187,7 @@
   <script>
     const $=(s,r=document)=>r.querySelector(s); const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
     const LS={save:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}, load:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}};
-    const LSK={settings:'scoreV4.settings', names:'scoreV4.names', sessions:'scoreV4.sessions', chips:'scoreV4.chips'};
+    const LSK={settings:'scoreV6.settings', names:'scoreV6.names', sessions:'scoreV6.sessions', chips:'scoreV6.chips'};
 
     function defaultUma(n){return n===3?[20,0,-20]:[30,10,-10,-30]}
     function parseUma(str,n){if(!str||!String(str).trim())return defaultUma(n); const a=String(str).split(/[,、\s]+/).map(s=>s.trim()).filter(Boolean).map(Number); if(a.length!==n||a.some(Number.isNaN)) throw new Error(`ウマは人数(${n})に合わせて${n}個`); return a}
@@ -170,67 +196,120 @@
 
     function parseNames(txt,n){const list=String(txt||'').split(/[\n,、,]+/).map(s=>s.trim()).filter(Boolean); while(list.length<n) list.push('P'+(list.length+1)); return list.slice(0,n)}
 
-    function buildScoreRows(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#scores'); wrap.innerHTML=''; for(let i=0;i<n;i++){ const t=document.importNode($('#scoreRowTpl').content,true); t.querySelector('.nameDisp').textContent=names[i]||('P'+(i+1)); const sel=t.querySelector('.p-rank'); sel.innerHTML=''; for(let k=1;k<=n;k++){ const o=document.createElement('option'); o.value=String(k); o.textContent=String(k); sel.appendChild(o);} wrap.appendChild(t);} applyTieUI(); }
+    function buildScoreRows(){
+      const n=Number($('#playerCount').value||4);
+      const names=LS.load(LSK.names,parseNames($('#nameList').value,n));
+      const wrap=$('#scores');
+      let html='';
+      for(let i=0;i<n;i++){
+        const nm=names[i]||('P'+(i+1));
+        let opts='';
+        for(let k=1;k<=n;k++){ opts += `<option value="${k}">${k}</option>`; }
+        html += `
+          <div class="row oneRow">
+            <div style="flex:0 0 96px"><label>名前</label><div class="nameDisp">${escape(nm)}</div></div>
+            <div><label>素点</label><input type="number" class="p-score" step="100" placeholder="" /></div>
+            <div class="rankCol"><label>着順</label><select class="p-rank">${opts}</select></div>
+          </div>`;
+      }
+      wrap.innerHTML=html; applyTieUI();
+    }
 
-    function buildChipGrid(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#chipGrid'); wrap.innerHTML=''; const saved=LS.load(LSK.chips,{}); for(let i=0;i<n;i++){ const t=document.importNode($('#chipCellTpl').content,true); $('.nameDisp',t).textContent=names[i]||('P'+(i+1)); const input=$('.c-chips',t); input.value = saved[names[i]] ?? ''; input.dataset.name = names[i]; input.addEventListener('input',()=>{ const chips=LS.load(LSK.chips,{}); const v = input.value===''? '' : Number(input.value||0); chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); updateChipInfo(); }); wrap.appendChild(t);} updateChipInfo(); }
+    function buildChipGrid(){
+      const n=Number($('#playerCount').value||4);
+      const names=LS.load(LSK.names,parseNames($('#nameList').value,n));
+      const wrap=$('#chipGrid');
+      wrap.innerHTML='';
+      const saved=LS.load(LSK.chips,{});
+      // 作成
+      let html='';
+      for(let i=0;i<n;i++){
+        const nm=names[i]||('P'+(i+1));
+        html += `<div><label class="nameDisp">${escape(nm)}</label><input type="number" class="c-chips" step="1" placeholder="" /></div>`;
+      }
+      wrap.innerHTML=html;
+      // 値セット＆イベント
+      const inputs=$$('.c-chips',wrap);
+      inputs.forEach((input,idx)=>{
+        const nm=names[idx]||('P'+(idx+1));
+        input.value = saved[nm] ?? '';
+        input.dataset.name = nm;
+        input.addEventListener('input',()=>{
+          const chips=LS.load(LSK.chips,{});
+          const v = input.value===''? '' : Number(input.value||0);
+          chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); updateChipInfo();
+        });
+      });
+      updateChipInfo();
+    }
+
+    function updateChipInfo_old(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#chipGrid'); wrap.innerHTML=''; const saved=LS.load(LSK.chips,{}); for(let i=0;i<n;i++){ const t=document.importNode($('#chipCellTpl').content,true); $('.nameDisp',t).textContent=names[i]||('P'+(i+1)); const input=$('.c-chips',t); input.value = saved[names[i]] ?? ''; input.dataset.name = names[i]; input.addEventListener('input',()=>{ const chips=LS.load(LSK.chips,{}); const v = input.value===''? '' : Number(input.value||0); chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); updateChipInfo(); }); wrap.appendChild(t);} updateChipInfo(); }
 
     function updateChipInfo(){ const chips=LS.load(LSK.chips,{}); const sum = Object.values(chips).map(v=>Number(v||0)).reduce((a,b)=>a+b,0); $('#chipInfo').textContent = sum!==0 ? `注意: チップ合計が±0ではありません（合計: ${sum}枚）` : '';
     }
 
     function getSettings(){ return { n:Number($('#playerCount').value||4), start:Number($('#startPoints').value||0), target:Number($('#targetPoints').value||0), umaStr:$('#uma').value, rounding:$('#rounding').value, tie:$('#tiePolicy').value, rate:Number($('#rateYen').value||0), chipYen:Number($('#chipYen').value||0) }; }
-    function setSettings(s){ $('#playerCount').value=String(s.n||4); $('#startPoints').value=s.start||''; $('#targetPoints').value=s.target||''; $('#uma').value=s.umaStr||''; $('#rounding').value=s.rounding||'fiveSix'; $('#tiePolicy').value=s.tie||'avg'; $('#rateYen').value=(s.rate!=null?s.rate:50); $('#chipYen').value=s.chipYen||''; }
+    function setSettings(s){ $('#playerCount').value=String(s.n||4); $('#startPoints').value=s.start||''; $('#targetPoints').value=s.target||''; $('#uma').value=s.umaStr||''; $('#rounding').value=s.rounding||'fiveSix'; $('#tiePolicy').value=s.tie||'avg'; $('#rateYen').value=s.rate!=null?s.rate:50; $('#chipYen').value=s.chipYen||''; }
 
     function applyTieUI(){ const show=$('#tiePolicy').value==='input'; $$('.rankCol').forEach(e=>e.style.display=show?'':'none'); }
 
+    // セッション計算
     function computeSession(){
       const set=getSettings(); const n=set.n; const uma=parseUma(set.umaStr,n);
       if(!set.start||!set.target) throw new Error('開始持ち点と返し基準を入力してください');
-      // 自動オカ: (返し-開始)*人数 をトップへ
+      // 自動オカ: (返し-開始)*人数 をトップへ（同点トップ＋平均なら等分）
       const overflow=(set.target - set.start) * n; const okaPt = overflow/1000; // pt
       const rankPts = uma.slice(); rankPts[0] = (rankPts[0]||0) + okaPt;
+
+      // スコア収集
       const names=LS.load(LSK.names,[]); const rows=$$('#scores .oneRow');
       const players=rows.map((row,i)=>({ name:names[i]||('P'+(i+1)), score: (function(v){ if(v===''||v==null) throw new Error('素点を全員分入力してください'); return Number(v); })($('.p-score',row).value), rank:Number($('.p-rank',row).value||0) }));
+
+      // 着順
       let ranked;
       if(set.tie==='avg'){
         const sorted=players.slice().sort((a,b)=>b.score-a.score); ranked=players.map(p=>({...p})); const idx=new Map(players.map((p,i)=>[p.name,i])); let i=0, place=1; while(i<sorted.length){ const sc=sorted[i].score; let j=i; while(j<sorted.length&&sorted[j].score===sc) j++; const size=j-i; const avgPt= rankPts.slice(place-1,place-1+size).reduce((a,v)=>a+v,0)/size; for(let k=i;k<j;k++){ const oi=idx.get(sorted[k].name); ranked[oi].rank=place; ranked[oi].rankPt=avgPt; } place+=size; i=j; }
       }else{ const setRanks=new Set(players.map(p=>p.rank)); if(setRanks.size!==players.length) throw new Error('着順が重複'); const min=Math.min(...players.map(p=>p.rank)), max=Math.max(...players.map(p=>p.rank)); if(min!==1||max!==players.length) throw new Error('着順は1〜人数'); ranked=players.map(p=>({...p, rankPt: rankPts[p.rank-1]})); }
+
+      // base = (調整後スコア - 30000) / 1000
       const results = ranked.map(p=>{ const base=(adjust(p.score,set.rounding)-30000)/1000; return { name:p.name, score:p.score, rank:p.rank, pt: (p.rankPt||0)+base }; });
       return { settings:set, results };
     }
 
     function renderSessions(){ const sessions=LS.load(LSK.sessions,[]); const names=LS.load(LSK.names,[]); const wrap=$('#sessionsWrap'); if(!sessions.length){ wrap.textContent='まだ追加されていません。'; return; }
+      // 合計pt（チップ除く）とチップpt（別行）
       const totals=Object.fromEntries(names.map(n=>[n,0])); sessions.forEach(s=>{ names.forEach(nm=>{ const r=s.results.find(x=>x.name===nm); totals[nm]+= r? r.pt:0; }); });
       const chips=LS.load(LSK.chips,{}); const set=LS.load(LSK.settings,getSettings()); const rate=set.rate||1; const chipYen=set.chipYen||0; const chipPts=Object.fromEntries(names.map(nm=>[nm, ((Number(chips[nm]||0)*chipYen)/rate) ]));
+
       let html='<table><colgroup>'+['#',...names,'合計pt','操作'].map(()=>'<col>').join('')+'</colgroup><thead><tr><th>#</th>'+names.map(n=>`<th>${escape(n)}</th>`).join('')+'<th>合計pt</th><th>操作</th></tr></thead><tbody>';
       sessions.forEach((s,idx)=>{ let rowSum=0; const tds=names.map(nm=>{ const r=s.results.find(x=>x.name===nm); const v=r? r.pt:0; rowSum+=v; return `<td>${fmtPt(v)}</td>`; }).join(''); html += `<tr data-id="${s.id}"><td>${idx+1}</td>${tds}<td>${fmtPt(rowSum)}</td><td><button class="btn" data-act="edit">編集</button> <button class="btn ghost" data-act="del">削除</button></td></tr>`; });
       html+='</tbody><tfoot><tr><td>当日計</td>'+names.map(n=>`<td>${fmtPt(totals[n])}</td>`).join('')+`<td>${fmtPt(Object.values(totals).reduce((a,b)=>a+b,0))}</td><td></td></tr>`;
-      html+='<tr><td>チップpt(のみ)</td>'+names.map(n=>`<td>${fmtPt(chipPts[n])}</td>`).join('')+`<td>${fmtPt(Object.values(chipPts).reduce((a,b)=>a+b,0))}</td><td></td></tr></tfoot></table>';
+      html+='<tr><td>チップpt(のみ)</td>'+names.map(n=>`<td>${fmtPt(chipPts[n])}</td>`).join('')+`<td>${fmtPt(Object.values(chipPts).reduce((a,b)=>a+b,0))}</td><td></td></tr>';
+      if(set.rate>0){ const yenBy=Object.fromEntries(names.map(n=>[n, Math.round((totals[n]+chipPts[n])*set.rate)])); html+= '<tr><td>当日計(円)</td>'+names.map(n=>`<td>${yenBy[n].toLocaleString()}</td>`).join('')+`<td>${Object.values(yenBy).reduce((a,b)=>a+b,0).toLocaleString()}</td><td></td></tr>`; }
+      html+='</tfoot></table>';
       wrap.innerHTML=html;
+      // bind
       wrap.querySelectorAll('button[data-act=edit]').forEach(b=>b.addEventListener('click',onEdit));
       wrap.querySelectorAll('button[data-act=del]').forEach(b=>b.addEventListener('click',onDelete));
     }
 
-    function addSession(){ $('#warn').textContent=''; try{ const payload=computeSession(); const sessions=LS.load(LSK.sessions,[]); sessions.push({ id:Date.now(), createdAt:new Date().toISOString(), settings:payload.settings, results:payload.results }); LS.save(LSK.sessions,sessions); LS.save(LSK.settings,payload.settings); renderSessions(); resetScores(); } catch(e){ $('#warn').textContent=e.message; } }
-
-    let editingId=null;
     function onEdit(ev){ const id=Number(ev.target.closest('tr')?.dataset.id); const sessions=LS.load(LSK.sessions,[]); const s=sessions.find(x=>x.id===id); if(!s) return; editingId=id; setSettings(s.settings); const names=LS.load(LSK.names,[]); buildScoreRows(); const map=new Map(s.results.map(r=>[r.name,r.score])); const rows=$$('#scores .oneRow'); rows.forEach((row,i)=>{ const nm=names[i]; const sc=map.get(nm); $('.p-score',row).value = (sc!=null)? sc : ''; }); window.scrollTo({top:0,behavior:'smooth'}); $('#addBtn').textContent='編集を上書き保存'; $('#addBtn').onclick=saveEdit; }
 
+    let editingId=null;
     function saveEdit(){ $('#warn').textContent=''; try{ const payload=computeSession(); const sessions=LS.load(LSK.sessions,[]); const idx=sessions.findIndex(x=>x.id===editingId); if(idx>=0){ sessions[idx].settings=payload.settings; sessions[idx].results=payload.results; } LS.save(LSK.sessions,sessions); editingId=null; $('#addBtn').textContent='計算して一覧に追加'; $('#addBtn').onclick=addSession; renderSessions(); resetScores(); }catch(e){ $('#warn').textContent=e.message; }}
 
     function onDelete(ev){ const id=Number(ev.target.closest('tr')?.dataset.id); if(!confirm('この行を削除しますか？')) return; const sessions=LS.load(LSK.sessions,[]).filter(s=>s.id!==id); LS.save(LSK.sessions,sessions); renderSessions(); }
 
     function resetScores(){ $$('.p-score').forEach(el=>el.value=''); }
 
+    function addSession(){ $('#warn').textContent=''; try{ const payload=computeSession(); const sessions=LS.load(LSK.sessions,[]); sessions.push({ id:Date.now(), createdAt:new Date().toISOString(), settings:payload.settings, results:payload.results }); LS.save(LSK.sessions,sessions); LS.save(LSK.settings,payload.settings); renderSessions(); resetScores(); } catch(e){ $('#warn').textContent=e.message; } }
+
     function attach(){ $('#playerCount').addEventListener('change',()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
-      ['startPoints','targetPoints','uma','rounding','tiePolicy','rateYen','chipYen'].forEach(id=>{ const el=$('#'+id); el.addEventListener('input',()=>{ LS.save(LSK.settings,getSettings()); renderSessions(); }); });
+      ['startPoints','targetPoints','uma','rounding','tiePolicy','rateYen','chipYen'].forEach(id=>{ const el=$('#'+id); el.addEventListener('input',()=>{ LS.save(LSK.settings,getSettings()); renderSessions(); applyTieUI(); }); });
       $('#applyNamesBtn').addEventListener('click',()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
       $('#addBtn').addEventListener('click',addSession);
-      // 成績リセットボタン（確認付き）
-      $('#resetResultsBtn').addEventListener('click',()=>{
-        if(confirm('当日の一覧とチップ入力をリセットします。よろしいですか？\n（設定・参加者は残ります）')){
-          LS.save(LSK.sessions,[]); LS.save(LSK.chips,{}); buildChipGrid(); renderSessions();
-        }
-      });
+      // リセット
+      $('#resetResultsBtn').addEventListener('click',()=>{ if(confirm('当日の一覧とチップ入力をリセットします。よろしいですか？\n（設定・参加者は残ります）')){ LS.save(LSK.sessions,[]); LS.save(LSK.chips,{}); buildChipGrid(); renderSessions(); } });
     }
 
     function boot(){ const set=LS.load(LSK.settings,{rate:50}); if(set) setSettings(set); const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); LS.save(LSK.names,names); $('#nameList').value=names.join(', '); buildScoreRows(); buildChipGrid(); attach(); renderSessions(); }
