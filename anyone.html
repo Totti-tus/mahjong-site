@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>臨時成績登録（保存なし・3人打ち対応）</title>
+  <style>
+    body {font-family: 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif; background: linear-gradient(135deg, #1e1e2f, #2c2c3c); color: #eee; margin: 0; padding: 0;}
+    header {background: rgba(0,0,0,0.8); padding: 16px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4);} 
+    header h1 {margin: 0; font-size: 20px; color: #fff;}
+    main {max-width: 1000px; margin: 24px auto; padding: 0 16px;}
+    .card {background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);}
+    h2 {margin-top: 0; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;}
+    label {display: block; margin-top: 8px; font-size: 13px; color: #ccc;}
+    input, select {width: 100%; padding: 8px; border-radius: 8px; border: none; margin-top: 4px; background: rgba(255,255,255,0.1); color: #fff;}
+    input[type=number] {text-align: right;}
+    fieldset {border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 12px;}
+    legend {font-size: 13px; color: #aaa;}
+    button {padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer;}
+    .primary {background: #4cafef; color: #fff;}
+    .ghost {background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #ccc;}
+    table {width: 100%; border-collapse: collapse; margin-top: 10px;}
+    th, td {padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: right;}
+    th:first-child, td:first-child {text-align: left;}
+    thead {background: rgba(255,255,255,0.05);}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>臨時成績登録（保存なし・3人打ち対応）</h1>
+  </header>
+  <main>
+    <section class="card">
+      <h2>ルール設定</h2>
+      <label>参加人数</label>
+      <select id="playerCount">
+        <option value="3">3人打ち</option>
+        <option value="4" selected>4人打ち</option>
+      </select>
+      <!-- 他の設定UIは省略（オカ・ウマ・チップ設定） -->
+    </section>
+    <section class="card">
+      <h2>プレイヤー入力</h2>
+      <div id="players"></div>
+    </section>
+  </main>
+  <script>
+    function initPlayers(count){
+      const wrap = document.getElementById('players');
+      wrap.innerHTML = '';
+      for(let i=0;i<count;i++){
+        const fs = document.createElement('fieldset');
+        fs.innerHTML = `<legend>プレイヤー${i+1}</legend>
+          <label>名前<input type="text" class="p-name"></label>
+          <label>素点<input type="number" class="p-score" value="25000"></label>
+          <label>着順<select class="p-rank">${Array.from({length:count},(_,j)=>`<option>${j+1}</option>`).join('')}</select></label>
+          <label>チップ<input type="number" class="p-chips" value="0"></label>`;
+        wrap.appendChild(fs);
+      }
+    }
+    document.getElementById('playerCount').addEventListener('change', e => {
+      initPlayers(Number(e.target.value));
+    });
+    initPlayers(4);
+  </script>
+</body>
+</html>
