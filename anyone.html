@@ -170,9 +170,54 @@
 
     function parseNames(txt,n){const list=String(txt||'').split(/[\n,、,]+/).map(s=>s.trim()).filter(Boolean); while(list.length<n) list.push('P'+(list.length+1)); return list.slice(0,n)}
 
-    function buildScoreRows(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#scores'); wrap.innerHTML=''; for(let i=0;i<n;i++){ const t=document.importNode($('#scoreRowTpl').content,true); t.querySelector('.nameDisp').textContent=names[i]||('P'+(i+1)); const sel=t.querySelector('.p-rank'); sel.innerHTML=''; for(let k=1;k<=n;k++){ const o=document.createElement('option'); o.value=String(k); o.textContent=String(k); sel.appendChild(o);} wrap.appendChild(t);} applyTieUI(); }
+    function buildScoreRows(){
+      const n=Number($('#playerCount').value||4);
+      const names=LS.load(LSK.names,parseNames($('#nameList').value,n));
+      const wrap=$('#scores');
+      let html='';
+      for(let i=0;i<n;i++){
+        const nm=names[i]||('P'+(i+1));
+        let opts='';
+        for(let k=1;k<=n;k++){ opts += `<option value="${k}">${k}</option>`; }
+        html += `
+          <div class="row oneRow">
+            <div style="flex:0 0 96px"><label>名前</label><div class="nameDisp">${escape(nm)}</div></div>
+            <div><label>素点</label><input type="number" class="p-score" step="100" placeholder="" /></div>
+            <div class="rankCol"><label>着順</label><select class="p-rank">${opts}</select></div>
+          </div>`;
+      }
+      wrap.innerHTML=html; applyTieUI();
+    }
 
-    function buildChipGrid(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#chipGrid'); wrap.innerHTML=''; const saved=LS.load(LSK.chips,{}); for(let i=0;i<n;i++){ const t=document.importNode($('#chipCellTpl').content,true); $('.nameDisp',t).textContent=names[i]||('P'+(i+1)); const input=$('.c-chips',t); input.value = saved[names[i]] ?? ''; input.dataset.name = names[i]; input.addEventListener('input',()=>{ const chips=LS.load(LSK.chips,{}); const v = input.value===''? '' : Number(input.value||0); chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); updateChipInfo(); }); wrap.appendChild(t);} updateChipInfo(); }
+    function buildChipGrid(){
+      const n=Number($('#playerCount').value||4);
+      const names=LS.load(LSK.names,parseNames($('#nameList').value,n));
+      const wrap=$('#chipGrid');
+      wrap.innerHTML='';
+      const saved=LS.load(LSK.chips,{});
+      // 作成
+      let html='';
+      for(let i=0;i<n;i++){
+        const nm=names[i]||('P'+(i+1));
+        html += `<div><label class="nameDisp">${escape(nm)}</label><input type="number" class="c-chips" step="1" placeholder="" /></div>`;
+      }
+      wrap.innerHTML=html;
+      // 値セット＆イベント
+      const inputs=$$('.c-chips',wrap);
+      inputs.forEach((input,idx)=>{
+        const nm=names[idx]||('P'+(idx+1));
+        input.value = saved[nm] ?? '';
+        input.dataset.name = nm;
+        input.addEventListener('input',()=>{
+          const chips=LS.load(LSK.chips,{});
+          const v = input.value===''? '' : Number(input.value||0);
+          chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); updateChipInfo();
+        });
+      });
+      updateChipInfo();
+    }
+
+    function updateChipInfo(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#chipGrid'); wrap.innerHTML=''; const saved=LS.load(LSK.chips,{}); for(let i=0;i<n;i++){ const t=document.importNode($('#chipCellTpl').content,true); $('.nameDisp',t).textContent=names[i]||('P'+(i+1)); const input=$('.c-chips',t); input.value = saved[names[i]] ?? ''; input.dataset.name = names[i]; input.addEventListener('input',()=>{ const chips=LS.load(LSK.chips,{}); const v = input.value===''? '' : Number(input.value||0); chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); updateChipInfo(); }); wrap.appendChild(t);} updateChipInfo(); }
 
     function updateChipInfo(){ const chips=LS.load(LSK.chips,{}); const sum = Object.values(chips).map(v=>Number(v||0)).reduce((a,b)=>a+b,0); $('#chipInfo').textContent = sum!==0 ? `注意: チップ合計が±0ではありません（合計: ${sum}枚）` : '';
     }
