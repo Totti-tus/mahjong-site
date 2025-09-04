@@ -145,6 +145,7 @@
   <div id="playerDetail"></div>
 
   <script type="module">
+    const MIN_GAMES_FOR_HIGHLIGHT = 30; // 30半荘未満はハイライト除外
     // Firebase 初期化
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -348,43 +349,71 @@
     }
 
     // 最大/最小ハイライト
-    function applyHighlighting() {
-     const table   = document.getElementById("statsTable");
-     const rows    = Array.from(table.querySelectorAll("tbody tr"));
-     const headers = Array.from(table.querySelectorAll("thead th"))
-                       .map(th => th.textContent.trim());
-     headers.forEach((header, ci) => {
-      // 各セルから比較用の数値を取り出す
-      const vals = rows.map(r => {
-      const cell = r.cells[ci];
-       if (["1位","2位","3位","4位"].includes(header)) {
-        // 小要素(<small>)の % 表示をパース
-        return parseFloat(cell.querySelector("small").textContent) || 0;
-       } else {
-        // それ以外はセルのテキストを数値化
-        return parseFloat(cell.textContent) || 0;
-       }
-      });
-      const max = Math.max(...vals);
-      const min = Math.min(...vals);
-      
-      rows.forEach((r, i) => {
-       const cell = r.cells[ci];
-       const v = vals[i];
-       cell.classList.remove("highlight-max","highlight-min");
-        if (header === "平均着順") {
-         // 着順は「小さいほどよい」扱い
-         if (v === min) cell.classList.add("highlight-max");
-         if (v === max) cell.classList.add("highlight-min");
-        } else {
-         // その他は「大きいほどよい」
-         if (v === max) cell.classList.add("highlight-max");
-         if (v === min) cell.classList.add("highlight-min");
-        }
-      });
-     });
+   function applyHighlighting() {
+  const table   = document.getElementById("statsTable");
+  const rows    = Array.from(table.querySelectorAll("tbody tr"));
+  const headers = Array.from(table.querySelectorAll("thead th")).map(th => th.textContent.trim());
 
-    }
+  // 列インデックス取得
+  const gamesColIndex = headers.indexOf("対局数");
+  const skipHeaders = new Set(["プレイヤー"]); // 数値でない列はハイライト対象外
+
+  headers.forEach((header, ci) => {
+    if (skipHeaders.has(header)) return;
+
+    // まず全セルのハイライトを外す
+    rows.forEach(r => r.cells[ci].classList.remove("highlight-max","highlight-min"));
+
+    // 閾値を満たす行だけから値を集める
+    const eligible = rows.map((r, i) => {
+      const games = parseFloat(r.cells[gamesColIndex]?.textContent) || 0;
+      if (games < MIN_GAMES_FOR_HIGHLIGHT) {
+        return { i, eligible: false, v: null };
+      }
+      let v;
+      if (["1位","2位","3位","4位"].includes(header)) {
+        const sm = r.cells[ci].querySelector("small");
+        v = sm ? parseFloat(sm.textContent) : NaN; // 「xx.x%」の数値部分
+      } else {
+        v = parseFloat(r.cells[ci].textContent);
+      }
+      return { i, eligible: !isNaN(v), v };
+    });
+
+    const vals = eligible.filter(e => e.eligible).map(e => e.v);
+    if (vals.length < 2) return; // 比較対象が1人以下ならハイライトしない
+
+    const max = Math.max(...vals);
+    const min = Math.min(...vals);
+
+    // 閾値を満たす行にのみハイライトを適用
+    rows.forEach((r, i) => {
+      const games = parseFloat(r.cells[gamesColIndex]?.textContent) || 0;
+      if (games < MIN_GAMES_FOR_HIGHLIGHT) return; // 30未満は付けない
+
+      let v;
+      if (["1位","2位","3位","4位"].includes(header)) {
+        const sm = r.cells[ci].querySelector("small");
+        v = sm ? parseFloat(sm.textContent) : NaN;
+      } else {
+        v = parseFloat(r.cells[ci].textContent);
+      }
+      if (isNaN(v)) return;
+
+      const cell = r.cells[ci];
+      if (header === "平均着順") {
+        // 平均着順は小さい方が良い（最小=良い=青）
+        if (v === min) cell.classList.add("highlight-max");
+        if (v === max) cell.classList.add("highlight-min");
+      } else {
+        // それ以外は大きい方が良い（最大=良い=青）
+        if (v === max) cell.classList.add("highlight-max");
+        if (v === min) cell.classList.add("highlight-min");
+      }
+    });
+  });
+}
+
 
     // 詳細表示
     window.viewPlayerDetail = function(pid) {
