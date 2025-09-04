@@ -34,7 +34,15 @@
     .row>div{flex:1 1 140px}
     .muted{color:var(--muted);font-size:12px}
     table{width:100%;border-collapse:separate;border-spacing:0;table-layout:auto}
-    th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:normal;overflow:visible;text-overflow:clip;word-break:normal;overflow-wrap:anywhere;font-variant-numeric: tabular-nums}
+    th,td{
+  padding:8px 10px;
+  border-bottom:1px solid var(--border);
+  text-align:right;
+  white-space:nowrap;
+}
+@media(max-width:640px){
+  th,td{ padding:6px 8px; font-size:13px; }
+}
     th:first-child,td:first-child{text-align:left}
     thead th{background:linear-gradient(180deg,rgba(255,255,255,.05),transparent);position:sticky;top:48px;z-index:5}
     tfoot td{font-weight:600;background:linear-gradient(180deg,transparent,rgba(255,255,255,.03))}
@@ -42,6 +50,10 @@
     .rankCol{display:none}
     .small{font-size:12px}
     .chipGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
+<div class="content scroll-x">
+  <div id="sessionsWrap" class="muted">まだ追加されていません。</div>
+</div>
+
   </style>
 </head>
 <body>
@@ -202,15 +214,62 @@
       return { settings:set, results };
     }
 
-    function renderSessions(){ const sessions=LS.load(LSK.sessions,[]); const names=LS.load(LSK.names,[]); const wrap=$('#sessionsWrap'); if(!sessions.length){ wrap.textContent='まだ追加されていません。'; return; }
-      // 合計pt（チップ除く）と最下行チップpt
-      const totals=Object.fromEntries(names.map(n=>[n,0]));
-      sessions.forEach(s=>{ names.forEach(nm=>{ const r=s.results.find(x=>x.name===nm); totals[nm]+= r? r.pt:0; }); });
-      const chips=LS.load(LSK.chips,{}); const set=LS.load(LSK.settings,getSettings()); const rate=set.rate||1; const chipYen=set.chipYen||0; const chipPts=Object.fromEntries(names.map(nm=>[nm, ((Number(chips[nm]||0)*chipYen)/rate) ]));
+    function renderSessions(){
+  const sessions = LS.load(LSK.sessions, []);
+  const names = LS.load(LSK.names, []);
+  const wrap = $('#sessionsWrap');
+  if (!sessions.length) {
+    wrap.textContent = 'まだ追加されていません。';
+    return;
+  }
 
-      let html='<table><thead><tr><th>#</th>'+names.map(n=>`<th>${escape(n)}</th>`).join('')+'<th>合計pt</th><th>操作</th></tr></thead><tbody>';
-      sessions.forEach((s,idx)=>{ let rowSum=0; const tds=names.map(nm=>{ const r=s.results.find(x=>x.name===nm); const v=r? r.pt:0; rowSum+=v; return `<td>${fmtPt(v)}</td>`; }).join(''); html += `<tr data-id="${s.id}"><td>${idx+1}</td>${tds}<td>${fmtPt(rowSum)}</td><td><button class="btn" data-act="edit">編集</button> <button class="btn ghost" data-act="del">削除</button></td></tr>`; });
-      html+='</tbody><tfoot><tr><td>当日計</td>'+names.map(n=>`<td>${fmtPt(totals[n])}</td>`).join('')+`<td>${fmtPt(Object.values(totals).reduce((a,b)=>a+b,0))}</td><td></td></tr>`;
+  // 当日累計（pt）と「チップpt(のみ)」の計算は従来どおり
+  const totals = Object.fromEntries(names.map(n => [n, 0]));
+  sessions.forEach(s => {
+    names.forEach(nm => {
+      const r = s.results.find(x => x.name === nm);
+      totals[nm] += r ? r.pt : 0;
+    });
+  });
+  const chips = LS.load(LSK.chips, {});
+  const set = LS.load(LSK.settings, getSettings());
+  const rate = set.rate || 1;
+  const chipYen = set.chipYen || 0;
+  const chipPts = Object.fromEntries(
+    names.map(nm => [nm, ((Number(chips[nm] || 0) * chipYen) / rate)])
+  );
+
+  // ★ 「合計pt」列を削除（# と各プレイヤー列、最後に操作だけ）
+  let html = '<table><thead><tr><th>#</th>'
+           + names.map(n => `<th>${escape(n)}</th>`).join('')
+           + '<th>操作</th></tr></thead><tbody>';
+
+  sessions.forEach((s, idx) => {
+    const tds = names.map(nm => {
+      const r = s.results.find(x => x.name === nm);
+      const v = r ? r.pt : 0;
+      return `<td>${fmtPt(v)}</td>`;
+    }).join('');
+    html += `<tr data-id="${s.id}"><td>${idx + 1}</td>${tds}`
+          + `<td><button class="btn" data-act="edit">編集</button> `
+          + `<button class="btn ghost" data-act="del">削除</button></td></tr>`;
+  });
+
+  // フッタも列数を合わせる（最後のセルは操作列のダミー）
+  html += '</tbody><tfoot>';
+  html += '<tr><td>当日計</td>'
+       + names.map(n => `<td>${fmtPt(totals[n])}</td>`).join('')
+       + '<td></td></tr>';
+  html += '<tr><td>チップpt(のみ)</td>'
+       + names.map(n => `<td>${fmtPt(chipPts[n])}</td>`).join('')
+       + '<td></td></tr>';
+  html += '</tfoot></table>';
+
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('button[data-act=edit]').forEach(b => b.addEventListener('click', onEdit));
+  wrap.querySelectorAll('button[data-act=del]').forEach(b => b.addEventListener('click', onDelete));
+}
+</td>`).join('')+`<td>${fmtPt(Object.values(totals).reduce((a,b)=>a+b,0))}</td><td></td></tr>`;
       html+='<tr><td>チップpt(のみ)</td>'+names.map(n=>`<td>${fmtPt(chipPts[n])}</td>`).join('')+`<td>${fmtPt(Object.values(chipPts).reduce((a,b)=>a+b,0))}</td><td></td></tr></tfoot></table>`;
       wrap.innerHTML=html;
       wrap.querySelectorAll('button[data-act=edit]').forEach(b=>b.addEventListener('click',onEdit));
