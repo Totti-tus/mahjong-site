@@ -307,6 +307,27 @@
     function escape(s){return String(s||'').replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]))}
 
     if(document.readyState!=='loading') boot(); else document.addEventListener('DOMContentLoaded', boot);
+function defaultUma(n){ return n===3? [20,0,-20] : [30,10,-10,-30]; }
+function attachEvents(){
+  const pc = document.querySelector('#playerCount');
+  if(!pc) return;
+  pc.addEventListener('change', ()=>{
+    const n = Number(pc.value||4);
+    initPlayers(n);
+    initChips(n);
+  });
+}
+function boot(){
+  const saved = LS.load(LS_KEYS.settings, null);
+  if(saved) setSettings(saved);
+  const n = Number(document.querySelector('#playerCount').value||4);
+  initPlayers(n);
+  initChips(n);
+  attachEvents();
+}
+if(document.readyState!=='loading') boot();
+else document.addEventListener('DOMContentLoaded', boot);
+
   </script>
 </body>
 </html>
