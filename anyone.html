@@ -44,27 +44,24 @@
     .small{font-size:12px}
     .chipGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
     .scroll-x{overflow-x:auto}
-/* --- 当日の一覧テーブルの見やすさ改善 --- */
-#sessionsWrap table.sessions-table { table-layout: fixed; width: 100%; }
+/* --- 当日の一覧（重なり＆省略を解消） --- */
+#sessionsWrap { overflow-x: auto; }                     /* 横スクロールを許可 */
+#sessionsWrap table.sessions-table { table-layout: auto; width: 100%; } /* 自動レイアウトに戻す */
+#sessionsWrap thead th { position: static; }            /* sticky での重なりを防止 */
 #sessionsWrap th, #sessionsWrap td {
-  white-space: nowrap;        /* 数値の改行を防止 */
-  overflow: hidden;
-  text-overflow: ellipsis;    /* はみ出しは省略表示 */
+  white-space: nowrap;                                  /* 数値は折り返さない */
+  overflow: visible;                                    /* 省略記号を使わない */
+  text-overflow: clip;
 }
 
-/* sticky が重なりの原因になる場合があるので一覧だけはオフ */
-#sessionsWrap thead th { position: static; }
+/* 列幅の目安（必要なら調整） */
+#sessionsWrap .indexCol { width: 40px; text-align: left; }
+#sessionsWrap .opsCol   { width: 90px; }
 
-/* 列幅を確保（1列目と操作列） */
-#sessionsWrap col.col-index { width: 48px; }
-#sessionsWrap col.col-ops   { width: 140px; }
-
-/* 操作ボタンをはみ出さないように並べる */
-#sessionsWrap td.opsCol > .ops {
-  display: flex; gap: 6px; justify-content: center; align-items: center;
-}
-
-  </style>
+/* 操作ボタンを小さく */
+#sessionsWrap .btn { padding: 4px 8px; font-size: 12px; border-radius: 6px; }
+#sessionsWrap .btn.small { padding: 2px 6px; font-size: 11px; }
+#sessionsWrap .ops { display: flex; gap: 4px; justify-content: center; align-items: center; }  </style>
 </head>
 <body>
   <header>
@@ -246,64 +243,49 @@
 function renderSessions(){
   const sessions = LS.load(LSK.sessions, []);
   const names    = LS.load(LSK.names, []);
-  const wrap     = $('#sessionsWrap');
+  const wrap     = document.getElementById('sessionsWrap');
+  if (!sessions.length){ wrap.textContent = 'まだ追加されていません。'; return; }
 
-  if (!sessions.length){
-    wrap.textContent = 'まだ追加されていません。';
-    return;
-  }
-
-  // 当日合計（pt/円）を集計
+  // 当日合計
   const totalsPt  = Object.fromEntries(names.map(n => [n, 0]));
   const totalsYen = Object.fromEntries(names.map(n => [n, 0]));
 
-  // テーブル開始（列幅を固定するために colgroup を使う）
-  let html = '<table class="sessions-table"><colgroup>'
-           + '<col class="col-index">'
-           + names.map(()=>'<col>').join('')
-           + '<col class="col-ops"></colgroup>'
-           + '<thead><tr><th class="indexCol">#</th>'
-           + names.map(n=>`<th>${escapeHtml(n)}</th>`).join('')
-           + '<th class="opsCol">操作</th></tr></thead><tbody>';
+  let html  = '<table class="sessions-table">';
+  html     += '<thead><tr>';
+  html     += '<th class="indexCol">#</th>';
+  html     += names.map(n => `<th>${escapeHtml(n)}</th>`).join('');
+  html     += '<th class="opsCol">操作</th>';
+  html     += '</tr></thead><tbody>';
 
   sessions.forEach((s, idx) => {
-    const rate = Number(s.settings?.rate || 0);  // 円/pt（セッションごと）
+    const rate = Number(s.settings?.rate || 0); // 円/pt
     html += `<tr><td class="indexCol">${idx+1}</td>`;
-
     names.forEach(nm => {
       const r  = s.results.find(x => x.name === nm);
-      const pt = r ? Number(r.pt) || 0 : 0;
+      const pt = r ? Number(r.pt)||0 : 0;
       totalsPt[nm]  += pt;
       totalsYen[nm] += Math.round(pt * rate);
       html += `<td>${fmtPt(pt)}</td>`;
     });
-
     html += `<td class="opsCol"><div class="ops">
-               <button class="btn small" data-edit="${s.id}">編集</button>
-               <button class="btn ghost small" data-del="${s.id}">削除</button>
+               <button class="btn small" data-edit="${s.id}">編</button>
+               <button class="btn small ghost" data-del="${s.id}">削</button>
              </div></td></tr>`;
   });
 
-  // フッタ：当日計 (pt) と 当日計 (円)
-  html += '</tbody><tfoot>'
-       +  '<tr class="total-pt"><td>当日計(pt)</td>'
-       +   names.map(n => `<td>${fmtPt(totalsPt[n])}</td>`).join('')
-       +  '<td></td></tr>'
-       +  '<tr class="total-yen"><td>当日計(円)</td>'
-       +   names.map(n => `<td>${(totalsYen[n]||0).toLocaleString()}</td>`).join('')
-       +  '<td></td></tr>'
-       +  '</tfoot></table>';
+  // フッタ：当日計（pt / 円）
+  html += '</tbody><tfoot>';
+  html += '<tr><td>当日計(pt)</td>' + names.map(n => `<td>${fmtPt(totalsPt[n])}</td>`).join('') + '<td></td></tr>';
+  html += '<tr><td>当日計(円)</td>' + names.map(n => `<td>${(totalsYen[n]||0).toLocaleString()}</td>`).join('') + '<td></td></tr>';
+  html += '</tfoot></table>';
 
   wrap.innerHTML = html;
 
-  // 操作ボタン
-  wrap.querySelectorAll('button[data-edit]').forEach(b=>{
-    b.addEventListener('click', () => onEdit({ target: b }));
-  });
-  wrap.querySelectorAll('button[data-del]').forEach(b=>{
-    b.addEventListener('click', () => onDelete({ target: b }));
-  });
+  // イベント
+  wrap.querySelectorAll('button[data-edit]').forEach(b => b.addEventListener('click', () => onEdit({target:b})));
+  wrap.querySelectorAll('button[data-del]').forEach(b => b.addEventListener('click', () => onDelete({target:b})));
 }
+
 
 
     // ---------- 追加・編集・削除（⑥点数のみリセット） ----------
