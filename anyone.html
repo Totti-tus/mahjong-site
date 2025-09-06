@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>臨時スコア登録</title>
+  <title>臨時スコア登録（保存なし・3/4人対応）</title>
   <style>
     :root{
       --bg1:#101426; --bg2:#1a1f34; --card:#14182acc; --border:#2b3150; --muted:#98a2b3; --text:#eef3ff;
@@ -34,15 +34,8 @@
     .row>div{flex:1 1 140px}
     .muted{color:var(--muted);font-size:12px}
     table{width:100%;border-collapse:separate;border-spacing:0;table-layout:auto}
-    th,td{
-  padding:8px 10px;
-  border-bottom:1px solid var(--border);
-  text-align:right;
-  white-space:nowrap;
-}
-@media(max-width:640px){
-  th,td{ padding:6px 8px; font-size:13px; }
-}
+    th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+    @media(max-width:640px){ th,td{padding:6px 8px;font-size:13px} }
     th:first-child,td:first-child{text-align:left}
     thead th{background:linear-gradient(180deg,rgba(255,255,255,.05),transparent);position:sticky;top:48px;z-index:5}
     tfoot td{font-weight:600;background:linear-gradient(180deg,transparent,rgba(255,255,255,.03))}
@@ -50,9 +43,7 @@
     .rankCol{display:none}
     .small{font-size:12px}
     .chipGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
-<div class="content scroll-x">
-  <div id="sessionsWrap" class="muted">まだ追加されていません。</div>
-</div>
+    .scroll-x{overflow-x:auto}
 /* --- 当日の一覧テーブルの見やすさ改善 --- */
 #sessionsWrap table.sessions-table { table-layout: fixed; width: 100%; }
 #sessionsWrap th, #sessionsWrap td {
@@ -77,7 +68,7 @@
 </head>
 <body>
   <header>
-    <h1>臨時スコア登録</h1>
+    <h1>臨時スコア登録（保存なし・3/4人対応）</h1>
     <a class="btn ghost" href="index.html">ホームへ戻る</a>
     <button class="btn" id="resetAllBtn" title="当日の成績とチップ累計をリセット">成績をリセット</button>
   </header>
@@ -108,7 +99,12 @@
           </div>
           <div class="row">
             <div>
-              <label>ウマ（人数分・カンマ）</label>
+              <label>オカ（トップ賞）<span class="muted">点</span></label>
+              <input id="okaPoint" type="number" step="1000" placeholder="例: 20000" />
+              <div class="muted small">※ pt換算は自動（/1000）。トップ同点時は等分配。</div>
+            </div>
+            <div>
+              <label>ウマ（人数分・カンマ）<span class="muted">pt</span></label>
               <input id="uma" type="text" placeholder="4人: 30,10,-10,-30 / 3人: 20,0,-20" />
             </div>
             <div>
@@ -118,20 +114,16 @@
                 <option value="fiveSix" selected>100の位を五捨六入</option>
               </select>
             </div>
+          </div>
+          <div class="row">
             <div>
               <label>レート <span class="muted">円/pt</span></label>
               <input id="rateYen" type="number" value="50" />
             </div>
             <div>
-              <label>チップ単価 <span class="muted">円/枚</span></label>
-              <input id="chipYen" type="number" step="1" placeholder="例: 100" />
-            </div>
-          </div>
-          <div class="row">
-            <div>
               <label>同点時の処理</label>
               <select id="tiePolicy">
-                <option value="avg" selected>順位点は同順位平均</option>
+                <option value="avg" selected>順位ptは同順位平均（着順不要）</option>
                 <option value="input">入力した着順を採用</option>
               </select>
             </div>
@@ -153,7 +145,7 @@
       <h2>点数入力 → すぐ追加</h2>
       <div class="content">
         <div id="scores"></div>
-        <div class="muted small">※ 同点は「同順位平均/入力した着順」を設定で切替。平均のとき着順入力欄は非表示。</div>
+        <div class="muted small">※ 同点は「同順位平均 / 入力した着順」を設定で切替。平均のとき着順入力欄は非表示。</div>
         <div style="margin-top:8px"><button class="btn primary" id="addBtn">計算して一覧に追加</button><span id="warn" class="muted" style="margin-left:10px"></span></div>
 
         <fieldset style="margin-top:10px">
@@ -166,11 +158,12 @@
 
     <section class="card">
       <h2>当日の一覧</h2>
-      <div class="content" id="sessionsWrap">まだ追加されていません。</div>
+      <div class="content scroll-x" id="sessionsWrap">まだ追加されていません。</div>
     </section>
 
   </main>
 
+  <!-- テンプレート -->
   <template id="scoreRowTpl">
     <div class="row oneRow">
       <div style="flex:0 0 96px"><label>名前</label><div class="nameDisp"></div></div>
@@ -187,9 +180,10 @@
   </template>
 
   <script>
+    // ---------- 小物ユーティリティ ----------
     const $=(s,r=document)=>r.querySelector(s); const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
     const LS={save:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}, load:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}};
-    const LSK={settings:'scoreV6.settings', names:'scoreV6.names', sessions:'scoreV6.sessions', chips:'scoreV6.chips'};
+    const LSK={settings:'scoreV7.settings', names:'scoreV7.names', sessions:'scoreV7.sessions', chips:'scoreV7.chips'};
 
     function defaultUma(n){return n===3?[20,0,-20]:[30,10,-10,-30]}
     function parseUma(str,n){if(!str||!String(str).trim())return defaultUma(n); const a=String(str).split(/[,、\s]+/).map(s=>s.trim()).filter(Boolean).map(Number); if(a.length!==n||a.some(Number.isNaN)) throw new Error(`ウマは人数(${n})に合わせて${n}個`); return a}
@@ -198,40 +192,51 @@
 
     function parseNames(txt,n){const list=String(txt||'').split(/[\n,、,]+/).map(s=>s.trim()).filter(Boolean); while(list.length<n) list.push('P'+(list.length+1)); return list.slice(0,n)}
 
-    function buildScoreRows(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#scores'); wrap.innerHTML=''; for(let i=0;i<n;i++){ const t=document.importNode($('#scoreRowTpl').content,true); t.querySelector('.nameDisp').textContent=names[i]||('P'+(i+1)); const sel=t.querySelector('.p-rank'); sel.innerHTML=''; for(let k=1;k<=n;k++){ const o=document.createElement('option'); o.value=String(k); o.textContent=String(k); sel.appendChild(o);} wrap.appendChild(t);} applyTieUI(); }
+    // ---------- 入力UI生成 ----------
+    function buildScoreRows(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#scores'); wrap.innerHTML=''; for(let i=0;i<n;i++){ const t=document.importNode($('#scoreRowTpl').content,true); t.querySelector('.nameDisp').textContent=names[i]||('P'+(i+1)); const sel=t.querySelector('.p-rank'); sel.innerHTML=''; for(let k=1;k<=n;k++){ const o=document.createElement('option'); o.value=String(k); o.textContent=String(k); sel.appendChild(o);} wrap.appendChild(t);} applyTieUI(); setStartToScores(); }
+
+    function setStartToScores(){ const start=Number($('#startPoints').value||25000); $$('.p-score').forEach(el=>{ if(!el.value) el.value=start; }); }
 
     function buildChipGrid(){ const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); const wrap=$('#chipGrid'); wrap.innerHTML=''; const saved=LS.load(LSK.chips,{}); for(let i=0;i<n;i++){ const t=document.importNode($('#chipCellTpl').content,true); $('.nameDisp',t).textContent=names[i]||('P'+(i+1)); const input=$('.c-chips',t); input.value = (saved[names[i]]!==undefined? saved[names[i]]: ''); input.dataset.name = names[i]; input.addEventListener('input',()=>{ const chips=LS.load(LSK.chips,{}); const v = input.value===''? '' : Number(input.value||0); chips[input.dataset.name]=v; LS.save(LSK.chips,chips); renderSessions(); updateChipInfo(); }); wrap.appendChild(t);} updateChipInfo(); }
 
-    function updateChipInfo(){ const chips=LS.load(LSK.chips,{}); const sum = Object.values(chips).map(v=>Number(v||0)).reduce((a,b)=>a+b,0); $('#chipInfo').textContent = sum!==0 ? `注意: チップ合計が±0ではありません（合計: ${sum}枚）` : '';
-    }
+    function updateChipInfo(){ const chips=LS.load(LSK.chips,{}); const sum = Object.values(chips).map(v=>Number(v||0)).reduce((a,b)=>a+b,0); $('#chipInfo').textContent = sum!==0 ? `注意: チップ合計が±0ではありません（合計: ${sum}枚）` : ''; }
 
-    function getSettings(){ return { n:Number($('#playerCount').value||4), start:Number($('#startPoints').value||0), target:Number($('#targetPoints').value||0), umaStr:$('#uma').value, rounding:$('#rounding').value, tie:$('#tiePolicy').value, rate:Number($('#rateYen').value||0), chipYen:Number($('#chipYen').value||0) }; }
-    function setSettings(s){ $('#playerCount').value=String(s.n||4); $('#startPoints').value=s.start||''; $('#targetPoints').value=s.target||''; $('#uma').value=s.umaStr||''; $('#rounding').value=s.rounding||'fiveSix'; $('#tiePolicy').value=s.tie||'avg'; $('#rateYen').value=s.rate??50; $('#chipYen').value=s.chipYen||''; }
+    // ---------- 設定 ----------
+    function getSettings(){ return { n:Number($('#playerCount').value||4), start:Number($('#startPoints').value||25000), target:Number($('#targetPoints').value||30000), okaPt:(Number($('#okaPoint').value||0))/1000, umaStr:$('#uma').value, rounding:$('#rounding').value, tie:$('#tiePolicy').value, rate:Number($('#rateYen').value||0) }; }
+    function setSettings(s){ $('#playerCount').value=String(s.n||4); $('#startPoints').value=s.start??25000; $('#targetPoints').value=s.target??30000; $('#okaPoint').value=(s.okaPt!=null? Math.round(s.okaPt*1000) : 20000); $('#uma').value=s.umaStr||''; $('#rounding').value=s.rounding||'fiveSix'; $('#tiePolicy').value=s.tie||'avg'; $('#rateYen').value=s.rate??50; }
 
     function applyTieUI(){ const show=$('#tiePolicy').value==='input'; $$('.rankCol').forEach(e=>e.style.display=show?'':'none'); }
 
-    // セッション計算
+    // ---------- 計算（②③） ----------
+    // 半荘pt = 順位pt(=ウマ + トップはオカpt) ＋ (調整後素点 − 調整後原点)/1000
     function computeSession(){
       const set=getSettings(); const n=set.n; const uma=parseUma(set.umaStr,n);
-      if(!set.start||!set.target) throw new Error('開始持ち点と返し基準を入力してください');
-      // 自動オカ: (返し-開始)*人数 をトップへ
-      const overflow=(set.target - set.start) * n; const okaPt = overflow/1000; // pt
-      const rankPts = uma.slice(); rankPts[0] = (rankPts[0]||0) + okaPt;
+      const names=LS.load(LSK.names,parseNames($('#nameList').value,n));
+      const rows=$$('#scores .oneRow');
+      if(rows.length!==n) throw new Error('人数と入力行数が一致していません');
+      const players=rows.map((row,i)=>({ name:names[i]||('P'+(i+1)), score:(()=>{const v=$('.p-score',row).value; if(v===''||v==null) throw new Error('素点を全員分入力してください'); return Number(v);})(), rank:Number($('.p-rank',row).value||0)}));
 
-      // スコア収集
-      const names=LS.load(LSK.names,[]); const rows=$$('#scores .oneRow');
-      const players=rows.map((row,i)=>({ name:names[i]||('P'+(i+1)), score: (function(v){ if(v===''||v==null) throw new Error('素点を全員分入力してください'); return Number(v); })($('.p-score',row).value), rank:Number($('.p-rank',row).value||0) }));
+      // 順位ptテーブルを作る（1位にオカptを加算）。同点平均の場合は後で区間平均。
+      const rankPts = uma.slice(); if(rankPts.length<n) throw new Error('ウマの個数が不足'); rankPts[0] = (rankPts[0]||0) + (set.okaPt||0);
 
-      // 着順
+      // 着順確定
       let ranked;
       if(set.tie==='avg'){
-        const sorted=players.slice().sort((a,b)=>b.score-a.score); ranked=players.map(p=>({...p})); const idx=new Map(players.map((p,i)=>[p.name,i])); let i=0, place=1; while(i<sorted.length){ const sc=sorted[i].score; let j=i; while(j<sorted.length&&sorted[j].score===sc) j++; const size=j-i; const avgPt= rankPts.slice(place-1,place-1+size).reduce((a,v)=>a+v,0)/size; for(let k=i;k<j;k++){ const oi=idx.get(sorted[k].name); ranked[oi].rank=place; ranked[oi].rankPt=avgPt; } place+=size; i=j; }
-      }else{ const setRanks=new Set(players.map(p=>p.rank)); if(setRanks.size!==players.length) throw new Error('着順が重複'); const min=Math.min(...players.map(p=>p.rank)), max=Math.max(...players.map(p=>p.rank)); if(min!==1||max!==players.length) throw new Error('着順は1〜人数'); ranked=players.map(p=>({...p, rankPt: rankPts[p.rank-1]})); }
+        const sorted=players.slice().sort((a,b)=>b.score-a.score); ranked=players.map(p=>({...p})); const idx=new Map(players.map((p,i)=>[p.name,i])); let i=0, place=1; while(i<sorted.length){ const sc=sorted[i].score; let j=i; while(j<sorted.length && sorted[j].score===sc) j++; const size=j-i; const avgPt= rankPts.slice(place-1,place-1+size).reduce((a,v)=>a+v,0)/size; for(let k=i;k<j;k++){ const oi=idx.get(sorted[k].name); ranked[oi].rank=place; ranked[oi].rankPt=avgPt; } place+=size; i=j; }
+      }else{
+        const setRanks=new Set(players.map(p=>p.rank)); if(setRanks.size!==players.length) throw new Error('着順が重複'); const min=Math.min(...players.map(p=>p.rank)), max=Math.max(...players.map(p=>p.rank)); if(min!==1||max!==players.length) throw new Error('着順は1〜人数'); ranked=players.map(p=>({...p, rankPt: rankPts[p.rank-1]}));
+      }
 
-      // base = (調整後スコア - 30000) / 1000
-      const results = ranked.map(p=>{ const base=(adjust(p.score,set.rounding)-30000)/1000; return { name:p.name, score:p.score, rank:p.rank, pt: (p.rankPt||0)+base }; });
+      // ベースpt：端数処理後の (score - target) / 1000
+      const targetAdj = adjust(set.target,set.rounding);
+      const results = ranked.map(p=>{ const base=(adjust(p.score,set.rounding)-targetAdj)/1000; return { name:p.name, score:p.score, rank:p.rank, pt: (p.rankPt||0)+base }; });
       return { settings:set, results };
     }
+
+    // ---------- 一覧（④⑤・スマホ最適化、右端合計列なし） ----------
+    function fmtPt(n){const x=Math.round((Number(n)||0)*10)/10; return (x>0?'+':'') + (Number.isInteger(x)? x.toFixed(0) : x.toFixed(1))}
+
+    let editingId=null;
 
     function fmtPt(n){
   const x = Math.round((Number(n)||0) * 10) / 10;
@@ -300,21 +305,13 @@ function renderSessions(){
   });
 }
 
-</td>`).join('')+`<td>${fmtPt(Object.values(totals).reduce((a,b)=>a+b,0))}</td><td></td></tr>`;
-      html+='<tr><td>チップpt(のみ)</td>'+names.map(n=>`<td>${fmtPt(chipPts[n])}</td>`).join('')+`<td>${fmtPt(Object.values(chipPts).reduce((a,b)=>a+b,0))}</td><td></td></tr></tfoot></table>`;
-      wrap.innerHTML=html;
-      wrap.querySelectorAll('button[data-act=edit]').forEach(b=>b.addEventListener('click',onEdit));
-      wrap.querySelectorAll('button[data-act=del]').forEach(b=>b.addEventListener('click',onDelete));
-    }
 
+    // ---------- 追加・編集・削除（⑥点数のみリセット） ----------
     function addSession(){ $('#warn').textContent=''; try{ const payload=computeSession(); const sessions=LS.load(LSK.sessions,[]); sessions.push({ id:Date.now(), createdAt:new Date().toISOString(), settings:payload.settings, results:payload.results }); LS.save(LSK.sessions,sessions); LS.save(LSK.settings,payload.settings); renderSessions(); resetScores(); } catch(e){ $('#warn').textContent=e.message; } }
 
-    let editingId=null;
-    function onEdit(ev){ const id=Number(ev.target.closest('tr')?.dataset.id); const sessions=LS.load(LSK.sessions,[]); const s=sessions.find(x=>x.id===id); if(!s) return; editingId=id; setSettings(s.settings); const names=LS.load(LSK.names,[]); buildScoreRows(); // スコア再配置
-      const map=new Map(s.results.map(r=>[r.name,r.score])); const rows=$$('#scores .oneRow'); rows.forEach((row,i)=>{ const nm=names[i]; const sc=map.get(nm); $('.p-score',row).value = (sc!=null)? sc : ''; });
-      window.scrollTo({top:0,behavior:'smooth'});
-      $('#addBtn').textContent='編集を上書き保存';
-    }
+    function onEdit(ev){ const id=Number(ev.target.closest('tr')?.dataset.id); const sessions=LS.load(LSK.sessions,[]); const s=sessions.find(x=>x.id===id); if(!s) return; editingId=id; setSettings(s.settings); LS.save(LSK.settings,s.settings); LS.save(LSK.names, s.results.map(r=>r.name)); $('#nameList').value = s.results.map(r=>r.name).join(', '); buildScoreRows(); // スコア再配置
+      const map=new Map(s.results.map(r=>[r.name,r.score])); const rows=$$('#scores .oneRow'); rows.forEach((row,i)=>{ const nm=LS.load(LSK.names,[])[i]; $('.p-score',row).value = (map.get(nm)!=null)? map.get(nm):''; });
+      window.scrollTo({top:0,behavior:'smooth'}); $('#addBtn').textContent='編集を上書き保存'; }
 
     function saveEdit(){ $('#warn').textContent=''; try{ const payload=computeSession(); const sessions=LS.load(LSK.sessions,[]); const idx=sessions.findIndex(x=>x.id===editingId); if(idx>=0){ sessions[idx].settings=payload.settings; sessions[idx].results=payload.results; } LS.save(LSK.sessions,sessions); editingId=null; $('#addBtn').textContent='計算して一覧に追加'; renderSessions(); resetScores(); }catch(e){ $('#warn').textContent=e.message; }}
 
@@ -324,18 +321,18 @@ function renderSessions(){
 
     function resetScores(){ $$('.p-score').forEach(el=>el.value=''); }
 
+    // ---------- 起動＆イベント ----------
     function attach(){ $('#playerCount').addEventListener('change',()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
-      ['startPoints','targetPoints','uma','rounding','tiePolicy','rateYen','chipYen'].forEach(id=>{ const el=$('#'+id); el.addEventListener('input',()=>{ LS.save(LSK.settings,getSettings()); renderSessions(); }); });
+      ['startPoints','targetPoints','okaPoint','uma','rounding','tiePolicy','rateYen'].forEach(id=>{ const el=$('#'+id); el.addEventListener('input',()=>{ LS.save(LSK.settings,getSettings()); if(id==='tiePolicy') applyTieUI(); }); });
       $('#applyNamesBtn').addEventListener('click',()=>{ const n=Number($('#playerCount').value||4); const names=parseNames($('#nameList').value,n); LS.save(LSK.names,names); buildScoreRows(); buildChipGrid(); renderSessions(); });
       $('#addBtn').addEventListener('click', onAddOrSave);
       $('#resetAllBtn').addEventListener('click',()=>{ if(!confirm('当日の一覧とチップ累計を全て削除します。よろしいですか？')) return; LS.save(LSK.sessions,[]); LS.save(LSK.chips,{}); renderSessions(); buildChipGrid(); resetScores(); });
     }
 
-    function boot(){ const set=LS.load(LSK.settings,{rate:50}); if(set) setSettings(set); const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); LS.save(LSK.names,names); $('#nameList').value=names.join(', '); buildScoreRows(); buildChipGrid(); attach(); renderSessions(); }
+    function boot(){ const set=LS.load(LSK.settings,{n:4,start:25000,target:30000,okaPt:20,umaStr:'30,10,-10,-30',rounding:'fiveSix',tie:'avg',rate:50}); setSettings(set); const n=Number($('#playerCount').value||4); const names=LS.load(LSK.names,parseNames($('#nameList').value,n)); LS.save(LSK.names,names); $('#nameList').value=names.join(', '); buildScoreRows(); buildChipGrid(); attach(); renderSessions(); }
 
     // helpers
-    function fmtPt(n){const x=Math.round((Number(n)||0)*100)/100; return (x>0?'+':'')+x.toFixed(2)}
-    function escape(s){return String(s||'').replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]))}
+    function escapeHtml(s){return String(s||'').replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]))}
 
     if(document.readyState!=='loading') boot(); else document.addEventListener('DOMContentLoaded', boot);
   </script>
