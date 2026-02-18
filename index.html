@@ -1,91 +1,354 @@
 
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>麻雀成績管理 - ホーム</title>
-<style>
-    :root {
-      --primary-color: #007bff;
-      --primary-hover: #0056b3;
-      --background-color: #f5f5f5;
-      --card-background: #ffffff;
-      --text-color: #333333;
-      --border-radius: 12px;
-      --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>麻雀成績管理 - ホーム</title>
+  <style>
+    :root{
+      --bg0:#F6F8FF;
+      --bg1:#EAF1FF;
+      --card: rgba(255,255,255,.78);
+      --card2: rgba(255,255,255,.92);
+      --stroke: rgba(15,23,42,.12);
+      --text:#0F172A;
+      --muted: rgba(15,23,42,.62);
+      --brand:#2563EB;
+      --brand2:#06B6D4;
+      --good:#16A34A;
+      --warn:#F59E0B;
+      --bad:#DC2626;
+      --radius:18px;
+      --shadow: 0 18px 50px rgba(15,23,42,.10);
+      --shadow2: 0 10px 28px rgba(15,23,42,.10);
+      --ring: 0 0 0 4px rgba(37,99,235,.18);
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
     }
-    body {
-      font-family: sans-serif;
-      background: var(--background-color);
-      color: var(--text-color);
-      padding: 20px;
+
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(1000px 520px at 14% 16%, rgba(37,99,235,.18), transparent 55%),
+        radial-gradient(820px 460px at 86% 20%, rgba(6,182,212,.14), transparent 60%),
+        radial-gradient(1100px 650px at 45% 96%, rgba(22,163,74,.08), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      padding: 28px 18px 40px;
     }
-    h1 {
-      text-align: center;
-      margin: 20px 0;
+
+    .shell{
+      max-width: 980px;
+      margin: 0 auto;
     }
-    .main-button {
-      display: block;
-      width: 100%;
-      max-width: 300px;
-      margin: 10px auto;
-      padding: 15px;
-      background: var(--primary-color);
-      color: white;
-      border: none;
-      border-radius: var(--border-radius);
-      font-size: 1.1em;
-      cursor: pointer;
+
+    .top{
+      display:flex;
+      flex-wrap:wrap;
+      gap:16px;
+      align-items:flex-end;
+      justify-content:space-between;
+      margin-bottom: 18px;
     }
-    .main-button:hover {
-      background-color: var(--primary-hover);
+
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
     }
-    .ranking {
-      margin-top: 40px;
-      background: var(--card-background);
-      padding: 25px;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
+
+    .logo{
+      width:44px;
+      height:44px;
+      border-radius: 14px;
+      background:
+        radial-gradient(12px 12px at 30% 30%, rgba(255,255,255,.55), transparent 60%),
+        linear-gradient(135deg, rgba(124,92,255,1), rgba(56,189,248,1));
+      box-shadow: 0 12px 30px rgba(124,92,255,.25);
+      position:relative;
+      overflow:hidden;
     }
-    .ranking h2 {
-      text-align: center;
-      margin-bottom: 25px;
+    .logo::after{
+      content:"";
+      position:absolute;
+      inset:-30%;
+      background: linear-gradient(135deg, transparent, rgba(15,23,42,.12), transparent);
+      transform: rotate(20deg);
     }
-    .ranking-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+
+    h1{
+      font-size: clamp(22px, 2.6vw, 30px);
+      margin:0;
+      letter-spacing:.02em;
+      line-height:1.15;
     }
-    .ranking-list li {
-      padding: 15px;
-      font-size: 1.1em;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #eee;
+    .sub{
+      margin:4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
     }
-    .ranking-list li:last-child {
-      border-bottom: none;
+
+    .panel{
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
-    .gold { background-color: #fff8dc; font-weight: bold; }
-    .silver { background-color: #f0f0f0; font-weight: bold; }
-    .bronze { background-color: #f5e1c0; font-weight: bold; }
+
+    .nav{
+      padding: 18px;
+    }
+
+    .navgrid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (min-width: 720px){
+      .navgrid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    .btn{
+      width:100%;
+      border: 1px solid rgba(15,23,42,.12);
+      background: linear-gradient(180deg, rgba(15,23,42,.04), rgba(15,23,42,.025));
+      color: var(--text);
+      border-radius: 16px;
+      padding: 14px 14px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      text-align:left;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease, box-shadow .12s ease;
+      box-shadow: 0 10px 20px rgba(15,23,42,.10);
+      user-select:none;
+    }
+    .btn:hover{
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,.22);
+      background: linear-gradient(180deg, rgba(15,23,42,.06), rgba(15,23,42,.03));
+      box-shadow: 0 14px 30px rgba(0,0,0,.26);
+    }
+    .btn:active{ transform: translateY(0); }
+    .btn:focus-visible{ outline:none; box-shadow: var(--shadow2), var(--ring); }
+
+    .icon{
+      width:40px;
+      height:40px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      flex: 0 0 auto;
+      border: 1px solid rgba(15,23,42,.12);
+      background: rgba(15,23,42,.03);
+    }
+    .icon svg{ width:20px; height:20px; opacity:.95; }
+
+    .btn .label{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .btn .label b{
+      font-size: 14px;
+      font-weight: 700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .btn .label span{
+      font-size: 12px;
+      color: var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .btn.primary{
+      border-color: rgba(124,92,255,.45);
+      background: linear-gradient(135deg, rgba(124,92,255,.30), rgba(56,189,248,.18));
+    }
+    .btn.primary:hover{
+      border-color: rgba(124,92,255,.62);
+      background: linear-gradient(135deg, rgba(124,92,255,.38), rgba(56,189,248,.22));
+    }
+
+    /* 臨時成績（ゲスト・簡易入力）だけ少し違う色味に */
+    .btn.temp{
+      border-color: rgba(245,158,11,.42);
+      background: linear-gradient(135deg, rgba(245,158,11,.20), rgba(15,23,42,.02));
+    }
+    .btn.temp:hover{
+      border-color: rgba(245,158,11,.58);
+      background: linear-gradient(135deg, rgba(245,158,11,.26), rgba(15,23,42,.03));
+    }
+    .btn.temp .icon{
+      border-color: rgba(245,158,11,.30);
+      background: rgba(245,158,11,.10);
+    }
+
+    .btn.ghost{
+      border-style:dashed;
+    }
+
+    .ranking{
+      margin-top: 16px;
+      padding: 18px;
+    }
+
+    .rankhead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 12px;
+    }
+    .rankhead h2{
+      font-size: 16px;
+      margin:0;
+      letter-spacing:.02em;
+    }
+    .badge{
+      font-size:12px;
+      color: var(--muted);
+      border:1px solid rgba(15,23,42,.12);
+      background: rgba(15,23,42,.03);
+      border-radius: 999px;
+      padding: 6px 10px;
+      white-space:nowrap;
+    }
+
+    .ranking-list{
+      list-style:none;
+      padding:0;
+      margin:0;
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+    }
+
+    .ranking-list li{
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(15,23,42,.12);
+      background: rgba(15,23,42,.025);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      font-size: 14px;
+      box-shadow: 0 10px 20px rgba(15,23,42,.08);
+    }
+
+    .ranking-list li span{
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* NOTE: .ranking-list li の方が詳細度が高いので、li.gold の形で上書き */
+    .ranking-list li.gold{
+      border-color: rgba(245, 158, 11, .55);
+      background: linear-gradient(135deg, rgba(245,158,11,.28), rgba(15,23,42,.025));
+      box-shadow:
+        0 10px 22px rgba(0,0,0,.18),
+        0 0 0 1px rgba(245,158,11,.22) inset;
+    }
+    .ranking-list li.silver{
+      border-color: rgba(226,232,240,.40);
+      background: linear-gradient(135deg, rgba(226,232,240,.22), rgba(15,23,42,.025));
+      box-shadow:
+        0 10px 22px rgba(0,0,0,.18),
+        0 0 0 1px rgba(226,232,240,.14) inset;
+    }
+    .ranking-list li.bronze{
+      border-color: rgba(234, 88, 12, .48);
+      background: linear-gradient(135deg, rgba(234,88,12,.22), rgba(15,23,42,.025));
+      box-shadow:
+        0 10px 22px rgba(0,0,0,.18),
+        0 0 0 1px rgba(234,88,12,.16) inset;
+    }
+
+    .footer{
+      margin-top: 18px;
+      color: rgba(15,23,42,.55);
+      font-size: 12px;
+      text-align:center;
+    }
   </style>
 </head>
+
 <body>
-<h1>麻雀成績管理</h1>
-<button class="main-button" onclick="location.href='member.html'">① メンバー登録</button>
-<button class="main-button" onclick="location.href='record.html'">② 成績登録</button>
-<button class="main-button" onclick="location.href='history.html'">③ 対戦履歴</button>
-<button class="main-button" onclick="location.href='stats.html'">④ 成績表（個人成績）</button>
-<button class="main-button" onclick="location.href='anyone.html'">＊臨時スコア登録</button>
-<div class="ranking">
-<h2>🏆 総合ポイントランキング 🏆</h2>
-<ul class="ranking-list" id="rankingList"></ul>
-</div>
-<script type="module">
+  <div class="shell">
+    <div class="top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>麻雀成績管理</h1>
+          <div class="sub">メンバー・対局・履歴・成績をスマートに管理</div>
+        </div>
+      </div>
+      <div class="badge">Firebase 同期</div>
+    </div>
+
+    <div class="panel nav">
+      <div class="navgrid">
+        <button class="btn primary" onclick="location.href='member.html'">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M22 21v-2a3 3 0 0 0-2-2.87" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="label"><b>① メンバー登録</b><span>プレイヤー追加・編集</span></div>
+        </button>
+
+        <button class="btn" onclick="location.href='record.html'">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="label"><b>② 成績登録</b><span>半荘を入力して保存</span></div>
+        </button>
+
+        <button class="btn" onclick="location.href='history.html'">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M3 3v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.05 13A9 9 0 1 0 6 6.5L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 7v5l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="label"><b>③ 対戦履歴</b><span>セッション検索・編集</span></div>
+        </button>
+
+        <button class="btn" onclick="location.href='stats.html'">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M3 3v18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 14l3-3 4 4 6-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="label"><b>④ 成績表（個人成績）</b><span>ランキング・指標</span></div>
+        </button>
+
+        <button class="btn temp" onclick="location.href='anyone.html'">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="2"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="label"><b>＊臨時スコア登録</b><span>ゲスト・簡易入力</span></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel ranking">
+      <div class="rankhead">
+        <h2>🏆 総合ポイントランキング</h2>
+        <div class="badge">自動更新</div>
+      </div>
+      <ul class="ranking-list" id="rankingList"></ul>
+      <div class="footer">※ポイントは Firestore の sessions から集計</div>
+    </div>
+  </div>
+
+  <script type="module">
   // —— Firebase 初期化 ——
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
