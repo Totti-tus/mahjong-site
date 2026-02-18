@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -105,6 +106,10 @@
       margin-top: 20px;
       max-width: 100%;
     }
+
+    tr.low-sample td { background-color: #fafafa; color:#666; }
+    tr.pair-selected td { background-color: #fff7d6; }
+    tr.pair-selected td:first-child { background-color: #fff2b3; }
   </style>
 </head>
 <body>
@@ -115,6 +120,24 @@
     <label>開始日：<input id="startDate" type="date"></label>
     <label>終了日：<input id="endDate" type="date"></label>
   </div>
+
+  <!-- 2人対戦フィルター -->
+  <div class="filter-box" id="pairFilterBox" style="max-width: 780px;">
+    <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;">
+      <strong>2人対戦フィルター：</strong>
+      <select id="pairA" style="padding:8px; font-size:14px;">
+        <option value="">--プレイヤーA--</option>
+      </select>
+      <select id="pairB" style="padding:8px; font-size:14px;">
+        <option value="">--プレイヤーB--</option>
+      </select>
+      <button id="applyPair" style="padding:10px 14px; font-size:14px; border:none; border-radius:10px; background:#111827; color:#fff; cursor:pointer;">この2人が同卓した半荘のみで表示</button>
+      <button id="clearPair" style="padding:10px 14px; font-size:14px; border:1px solid #999; border-radius:10px; background:#fff; cursor:pointer;">解除</button>
+      <span id="pairStatus" style="color:#333; font-size:13px;"></span>
+    </div>
+    <small style="margin-top:6px;">※選んだ2人が同卓した半荘だけで集計し、2人は表の上に固定して少し色を変えます。</small>
+  </div>
+
   <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
 
   <!-- 集計テーブル -->
@@ -170,6 +193,10 @@
     const playersMap = {};
     window.playerData = {};
 
+    // 2人対戦フィルター状態
+    let activePairA = '';
+    let activePairB = '';
+
     // プレイヤー名読み込み
     async function loadPlayerNames() {
       const snap = await getDocs(collection(db, "players"));
@@ -178,11 +205,59 @@
       });
     }
 
+
+    function populatePairSelectors() {
+      const selA = document.getElementById("pairA");
+      const selB = document.getElementById("pairB");
+      if (!selA || !selB) return;
+
+      // 既存option（先頭）以外を一旦クリア
+      selA.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+      selB.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+
+      const ids = Object.keys(playersMap).sort((x,y) => (playersMap[x]||x).localeCompare(playersMap[y]||y, 'ja'));
+      ids.forEach(id => {
+        const optA = document.createElement("option");
+        optA.value = id;
+        optA.textContent = playersMap[id] || id;
+        selA.appendChild(optA);
+
+        const optB = document.createElement("option");
+        optB.value = id;
+        optB.textContent = playersMap[id] || id;
+        selB.appendChild(optB);
+      });
+    }
+
+
     document.addEventListener("DOMContentLoaded", async () => {
       await loadPlayerNames();
+      populatePairSelectors();
 
       document.getElementById("startDate").addEventListener("change", filterAndCalculate);
       document.getElementById("endDate").addEventListener("change", filterAndCalculate);
+
+      document.getElementById("applyPair").addEventListener("click", () => {
+        const a = document.getElementById("pairA").value;
+        const b = document.getElementById("pairB").value;
+        if (!a || !b || a === b) {
+          document.getElementById("pairStatus").textContent = "※プレイヤーを2人（別々）選んでください";
+          return;
+        }
+        activePairA = a;
+        activePairB = b;
+        document.getElementById("pairStatus").textContent = `適用中：${playersMap[a] || a} × ${playersMap[b] || b}`;
+        filterAndCalculate();
+      });
+
+      document.getElementById("clearPair").addEventListener("click", () => {
+        activePairA = '';
+        activePairB = '';
+        document.getElementById("pairA").value = '';
+        document.getElementById("pairB").value = '';
+        document.getElementById("pairStatus").textContent = '';
+        filterAndCalculate();
+      });
 
       onSnapshot(colSessions(db, "sessions"), snapshot => {
         allSessions = snapshot.docs.map(d => d.data());
@@ -198,7 +273,16 @@
       const filtered = allSessions
         .map(sess => ({
           ...sess,
-          games: sess.games.filter(g => (!start || g.date >= start) && (!end || g.date <= end))
+          games: sess.games.filter(g => {
+            const inDate = (!start || g.date >= start) && (!end || g.date <= end);
+            if (!inDate) return false;
+            // 2人対戦フィルター（両者が同卓した半荘のみ）
+            if (activePairA && activePairB) {
+              const ids = g.players.map(x => x.id);
+              return ids.includes(activePairA) && ids.includes(activePairB);
+            }
+            return true;
+          })
         }))
         .filter(sess => sess.games.length > 0);
 
@@ -300,14 +384,27 @@
       const tbody = document.querySelector("#statsTable tbody");
       tbody.innerHTML = '';
 
-      // 平均点順でソート
+      // ソート：基本は合計ポイント順。ただし30半荘未満は下に回す（2人対戦フィルター適用中は除く）
       const players = Object.values(window.playerData)
         .map(p => {
           const avgDiff = (p.totalPoint - p.totalRankPoint) / p.games;
-          p._sortKey = 30000 + avgDiff * 1000;
+          p._avgFinal = 30000 + avgDiff * 1000;
           return p;
         })
-        .sort((a, b) => b.totalPoint - a.totalPoint);
+        .sort((a, b) => {
+          // 2人対戦フィルター時は、選んだ2人を最上段へ
+          if (activePairA && activePairB) {
+            const aSel = (a.id === activePairA || a.id === activePairB) ? 1 : 0;
+            const bSel = (b.id === activePairA || b.id === activePairB) ? 1 : 0;
+            if (aSel !== bSel) return bSel - aSel;
+          } else {
+            const aOK = a.games >= MIN_GAMES_FOR_HIGHLIGHT ? 1 : 0;
+            const bOK = b.games >= MIN_GAMES_FOR_HIGHLIGHT ? 1 : 0;
+            if (aOK !== bOK) return bOK - aOK; // 30未満は下へ
+          }
+          // 同条件内では合計ポイント順
+          return b.totalPoint - a.totalPoint;
+        });
 
       players.forEach(p => {
         const avgDiff    = (p.totalPoint - p.totalRankPoint) / p.games;
@@ -323,6 +420,8 @@
         const fourRate   = (p.fourths / p.games*100).toFixed(1) + '%';
 
         const tr = document.createElement("tr");
+        if (!activePairA && !activePairB && p.games < MIN_GAMES_FOR_HIGHLIGHT) tr.classList.add("low-sample");
+        if (activePairA && activePairB && (p.id === activePairA || p.id === activePairB)) tr.classList.add("pair-selected");
         tr.innerHTML =
           `<td><span class="clickable-name" data-id="${p.id}">${p.name}</span></td>` +
           `<td>${p.games}</td>` +
@@ -422,8 +521,9 @@
       const div = document.getElementById("playerDetail");
       div.innerHTML = '';
 
-      const avgDiff    = ((p.totalPoint - p.totalRankPoint)/p.games).toFixed(1);
-      const avgFinal   = (25000 + parseFloat(avgDiff)*1000).toFixed(0);
+      const avgDiffRaw = (p.totalPoint - p.totalRankPoint) / p.games;
+      const avgDiff    = avgDiffRaw.toFixed(1);
+      const avgFinal   = (30000 + avgDiffRaw * 1000).toFixed(0);
       const avgRank    = (p.totalRank/p.games).toFixed(2);
       const topRate    = ((p.tops/p.games)*100).toFixed(1);
       const avoidLast  = (((p.tops+p.seconds+p.thirds)/p.games)*100).toFixed(1);
