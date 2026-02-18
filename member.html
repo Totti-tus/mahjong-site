@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>メンバー登録</title>
+  <title>メンバー管理</title>
+
 <script type="module">
   // —— Firebase 初期化 ——
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -121,28 +123,282 @@
     });
   }
 </script>
-  <style>
-    body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
-    h1 { text-align: center; }
-    .form { text-align: center; margin: 20px 0; }
-    input[type="text"] { padding: 10px; font-size: 16px; margin-bottom: 5px; }
-    button { padding: 6px 10px; font-size: 14px; margin-left: 5px; cursor: pointer; }
-    ul { list-style: none; padding: 0; max-width: 400px; margin: 0 auto; }
-    li { background: white; padding: 10px; margin-bottom: 5px; border-radius: 5px; }
-    .top-nav { text-align: center; margin-bottom: 20px; }
-    .main-button { padding: 10px 20px; font-size: 16px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
-    .main-button:hover { background-color: #0056b3; }
-  </style>
+
+<style>
+  :root{
+    --bg1:#f7fbff;
+    --bg2:#eef3ff;
+    --card:#ffffffcc;
+    --stroke:#e6ebf5;
+    --text:#0f172a;
+    --muted:#64748b;
+    --primary:#2563eb;
+    --primary2:#60a5fa;
+    --danger:#ef4444;
+    --shadow: 0 18px 40px rgba(15, 23, 42, .10);
+    --shadow2: 0 10px 22px rgba(15, 23, 42, .08);
+    --r: 18px;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(900px 420px at 20% 0%, #dbeafe 0%, transparent 60%),
+      radial-gradient(800px 420px at 90% 20%, #e9d5ff 0%, transparent 55%),
+      linear-gradient(180deg, var(--bg2), var(--bg1));
+    min-height:100vh;
+  }
+
+  .wrap{
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 22px 14px 40px;
+  }
+
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width: 0;
+  }
+
+  .logo{
+    width:44px;height:44px;border-radius:14px;
+    background: radial-gradient(circle at 30% 30%, #ffffff 0%, #dbeafe 28%, #93c5fd 58%, #6366f1 100%);
+    box-shadow: var(--shadow2);
+    flex: 0 0 auto;
+  }
+
+  h1{
+    font-size: clamp(18px, 4.4vw, 26px);
+    margin:0;
+    letter-spacing: .02em;
+    line-height:1.2;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .sub{
+    margin:4px 0 0;
+    color:var(--muted);
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .btn{
+    appearance:none;
+    border:1px solid var(--stroke);
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor:pointer;
+    box-shadow: 0 10px 18px rgba(15,23,42,.06);
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  .btn:hover{ transform: translateY(-1px); box-shadow: 0 16px 26px rgba(15,23,42,.10); border-color:#d6def0; }
+  .btn:active{ transform: translateY(0); box-shadow: 0 10px 18px rgba(15,23,42,.06); }
+
+  .card{
+    background: var(--card);
+    border:1px solid var(--stroke);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    padding: 16px;
+  }
+
+  .card-head{
+    display:flex;
+    align-items: center;
+    justify-content: space-between;
+    gap:10px;
+    margin-bottom: 12px;
+  }
+
+  .card-title{
+    font-size: 16px;
+    margin:0;
+  }
+
+  .form{
+    display:flex;
+    gap:10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  #playerName{
+    flex: 1 1 260px;
+    min-width: 180px;
+    padding: 12px 14px;
+    font-size: 16px;
+    border-radius: 14px;
+    border:1px solid var(--stroke);
+    background: #ffffff;
+    outline:none;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  }
+  #playerName:focus{
+    border-color: #bcd3ff;
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+  }
+
+  #addButton{
+    border: 1px solid rgba(37,99,235,.25);
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 14px;
+    cursor:pointer;
+    box-shadow: 0 12px 22px rgba(37,99,235,.18);
+    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  }
+  #addButton:hover{ transform: translateY(-1px); box-shadow: 0 18px 30px rgba(37,99,235,.22); filter: brightness(1.03); }
+  #addButton:active{ transform: translateY(0); box-shadow: 0 12px 22px rgba(37,99,235,.18); }
+
+  /* List */
+  #memberList{
+    list-style:none;
+    padding:0;
+    margin: 14px 0 0;
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #memberList li{
+    background: #ffffff;
+    border:1px solid var(--stroke);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 12px 22px rgba(15,23,42,.06);
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  #memberList li span{
+    font-weight: 800;
+    letter-spacing: .01em;
+    flex: 1 1 auto;
+    min-width: 140px;
+  }
+
+  #memberList li input[type="text"]{
+    flex: 1 1 260px;
+    min-width: 180px;
+    padding: 10px 12px;
+    font-size: 16px;
+    border-radius: 12px;
+    border:1px solid var(--stroke);
+    outline:none;
+  }
+  #memberList li input[type="text"]:focus{
+    border-color: #bcd3ff;
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+  }
+
+  #memberList li button{
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 800;
+    border-radius: 12px;
+    border:1px solid var(--stroke);
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+    cursor:pointer;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  #memberList li button:hover{ transform: translateY(-1px); box-shadow: 0 14px 22px rgba(15,23,42,.10); border-color:#d6def0; }
+  #memberList li button:active{ transform: translateY(0); box-shadow: 0 10px 18px rgba(15,23,42,.06); }
+
+  /* Buttons by order: 編集/保存/削除 */
+  #memberList li button:nth-of-type(1){
+    border-color: rgba(37,99,235,.25);
+  }
+  #memberList li button:nth-of-type(2){
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
+    border-color: rgba(37,99,235,.25);
+    color: #fff;
+    box-shadow: 0 12px 20px rgba(37,99,235,.18);
+  }
+  #memberList li button:nth-of-type(2):hover{
+    box-shadow: 0 18px 28px rgba(37,99,235,.22);
+  }
+  #memberList li button:nth-of-type(3){
+    background: linear-gradient(180deg, #fff1f2, #ffe4e6);
+    border-color: rgba(239,68,68,.25);
+    color: #991b1b;
+  }
+
+  .hint{
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  /* Mobile tweaks */
+  @media (max-width: 420px){
+    .wrap{ padding: 18px 12px 34px; }
+    .btn{ padding: 9px 12px; font-size: 13px; }
+    .card{ padding: 14px; }
+    #addButton{ width: 100%; }
+    #playerName{ flex-basis: 100%; }
+    #memberList li{ padding: 12px; }
+    #memberList li span{ flex-basis: 100%; }
+    #memberList li input[type="text"]{ flex-basis: 100%; }
+    #memberList li button{ flex: 1 1 auto; }
+  }
+</style>
 </head>
+
 <body>
-  <h1>メンバー登録</h1>
-  <div class="top-nav">
-    <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div style="min-width:0">
+          <h1>メンバー管理</h1>
+          <div class="sub">追加・編集・削除（Firebase同期）</div>
+        </div>
+      </div>
+      <button class="btn" onclick="location.href='index.html'">ホームへ戻る</button>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <p class="card-title" style="font-weight:900;margin:0;">メンバー追加</p>
+      </div>
+
+      <div class="form">
+        <input id="playerName" placeholder="名前を入力" type="text" autocomplete="off"/>
+        <button id="addButton">追加</button>
+      </div>
+
+      <div class="hint">※ 追加後は一覧が自動更新されます。編集は「編集 → 保存」、削除は「削除」です。</div>
+
+      <ul id="memberList"></ul>
+    </div>
   </div>
-  <div class="form">
-    <input id="playerName" placeholder="名前を入力" type="text"/>
-    <button id="addButton">追加</button>
-  </div>
-  <ul id="memberList"></ul>
 </body>
 </html>

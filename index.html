@@ -111,6 +111,29 @@
       gap: 12px;
     }
 
+    /* スマホの幅がかなり狭い時（iPhone SE / 小さめ端末）にボタンが潰れないように
+       1列にして、文字は2行まで表示（省略） */
+    @media (max-width: 420px){
+      body{ padding: 20px 14px 34px; }
+      .nav{ padding: 14px; }
+      .navgrid{ grid-template-columns: 1fr; gap: 10px; }
+      .btn{ padding: 16px 14px; min-height: 78px; }
+      .icon{ width:44px; height:44px; }
+      .icon svg{ width:22px; height:22px; }
+
+      /* 2行まで表示して、見切れ方を自然に */
+      .btn .label b,
+      .btn .label span{
+        white-space: normal;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+      }
+      .btn .label b{ -webkit-line-clamp: 2; line-height: 1.25; }
+      .btn .label span{ -webkit-line-clamp: 2; line-height: 1.25; }
+    }
+
     @media (min-width: 720px){
       .navgrid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -5,55 +6,260 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>成績登録</title>
 <style>
-  body { font-family: Arial, sans-serif; background-color: #f0f0f0; padding: 20px; }
-  h1 { text-align: center; }
-  .form-section, .history-section {
-    background: white; padding: 20px; max-width: 600px;
-    margin: 20px auto; border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  }
-  label, select, input[type="number"], input[type="date"] {
-    display: block; width: 100%; margin-bottom: 10px;
-    padding: 10px; font-size: 16px;
-    border-radius: 5px; border: 1px solid #ccc;
-  }
-  .main-button {
-    display: block; width: 100%; max-width: 300px;
-    margin: 10px auto; padding: 15px; font-size: 18px;
-    background-color: #007bff; color: white;
-    border: none; border-radius: 10px; cursor: pointer;
-  }
-  .main-button:hover { background-color: #0056b3; }
-  .player-row { display: flex; gap: 10px; margin-bottom: 10px; }
-  .player-row select, .player-row input { flex: 1; }
-  .top-nav { text-align: center; margin-bottom: 20px; }
-  .sum-warning { font-weight: bold; margin: 10px 0; text-align: center; }
-  .positive { color: blue; }
-  .negative { color: red; }
-  .score-input { text-align: right; }
-  .history-section table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  .history-section th, .history-section td { border: 1px solid #ccc; padding: 8px; text-align: right; }
-  .history-section th { background-color: #007bff; color: white; text-align: center; }
-  .history-section tr:nth-child(even) { background-color: #f9f9f9; }
-  .history-section tr:hover { background-color: #f1f1f1; }
-  .history-section .money-row td { font-weight: bold; background-color: #e8f5e9; color: #2e7d32; }
-  .rate-input-wrapper { display: flex; align-items: center; gap: 8px; }
-  .rate-input-wrapper input { width: 100px; }
+
+:root{
+  --bg1:#f6fbff;
+  --bg2:#ffffff;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --line:#e2e8f0;
+  --primary:#2563eb;
+  --primary2:#1d4ed8;
+  --accent:#06b6d4;
+  --warn:#ef4444;
+  --ok:#16a34a;
+  --shadow: 0 10px 30px rgba(15, 23, 42, .08);
+  --shadow2: 0 6px 18px rgba(15, 23, 42, .10);
+  --radius: 18px;
+}
+
+*{box-sizing:border-box;}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  margin:0;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(37, 99, 235, .10), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(6, 182, 212, .10), transparent 55%),
+    linear-gradient(180deg, var(--bg1), var(--bg2));
+  padding: 18px;
+}
+
+h1{
+  text-align:center;
+  font-size: clamp(22px, 2.4vw, 28px);
+  margin: 10px 0 18px;
+  letter-spacing:.02em;
+}
+
+.container{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.top-nav{
+  display:flex;
+  gap: 12px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin: 10px 0 18px;
+}
+
+.form-section, .history-section{
+  background: var(--card);
+  padding: 18px;
+  margin: 14px auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(226,232,240,.8);
+}
+
+.section-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.section-title h2{
+  margin:0;
+  font-size: 16px;
+  color: var(--text);
+}
+.badge{
+  font-size:12px;
+  color: var(--muted);
+  background: rgba(2, 132, 199, .08);
+  border:1px solid rgba(2, 132, 199, .18);
+  padding:6px 10px;
+  border-radius: 999px;
+}
+
+label{
+  display:block;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+
+select, input[type="number"], input[type="date"]{
+  display:block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 12px 12px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  outline: none;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
+}
+
+select:focus, input:focus{
+  border-color: rgba(37, 99, 235, .55);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+}
+
+.score-input{text-align:right;}
+
+.player-row{
+  display:grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sum-warning{
+  margin: 12px 0 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  text-align:center;
+  font-weight: 700;
+  border: 1px solid rgba(226,232,240,.9);
+  background: linear-gradient(180deg, rgba(248,250,252,.9), rgba(255,255,255,.9));
+}
+
+.positive{ color: #2563eb; }
+.negative{ color: #ef4444; }
+
+.main-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing:.02em;
+  background: linear-gradient(135deg, var(--primary), var(--primary2));
+  color: #fff;
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: var(--shadow2);
+  transition: transform .08s ease, box-shadow .15s ease, filter .15s ease;
+}
+.main-button:hover{ filter: brightness(1.03); }
+.main-button:active{ transform: translateY(1px); box-shadow: 0 4px 12px rgba(15,23,42,.12); }
+
+.main-button.secondary{
+  background: linear-gradient(135deg, rgba(15, 23, 42, .06), rgba(15, 23, 42, .03));
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.rate-box{
+  padding-top: 14px;
+}
+.rate-input-wrapper{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+.rate-input-wrapper input{
+  width: 140px;
+  margin-bottom: 0;
+}
+.rate-input-wrapper span{
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.history-section h2{
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.table-wrap{
+  overflow:auto;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+.history-section table{
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 560px;
+}
+.history-section th, .history-section td{
+  border-bottom: 1px solid var(--line);
+  padding: 10px 10px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.history-section th{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(37,99,235,.10), rgba(37,99,235,.06));
+  color: var(--text);
+  text-align: center;
+  font-weight: 900;
+}
+.history-section tr:nth-child(even) td{
+  background: rgba(15, 23, 42, .02);
+}
+.history-section tr:hover td{
+  background: rgba(37, 99, 235, .06);
+}
+
+.history-section td:first-child,
+.history-section th:first-child{
+  text-align: center;
+}
+
+.history-section .money-row td{
+  font-weight: 900;
+  background: rgba(16, 185, 129, .08);
+}
+.history-section .money-row td:first-child{
+  color: #0f766e;
+}
+
+@media (max-width: 640px){
+  body{ padding: 14px; }
+  .form-section, .history-section{ padding: 14px; }
+  .player-row{ grid-template-columns: 1fr; }
+  .main-button{ max-width: 100%; }
+  .rate-input-wrapper{ flex-wrap: wrap; }
+  .rate-input-wrapper input{ width: 100%; }
+}
+
 </style>
 </head>
 <body>
+<div class="container">
 <h1>成績登録</h1>
 <div class="top-nav">
-  <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
+  <button class="main-button" class="main-button secondary" onclick="location.href='index.html'">ホームへ戻る</button>
   <button class="main-button" onclick="startNewSession()">新しい回を開始する</button>
 </div>
 <div class="form-section">
+  <div class="section-title"><h2>入力</h2><span class="badge">スコア合計=100000</span></div>
   <label>日付：<input id="gameDate" type="date"/></label>
   <div id="playersContainer"></div>
   <div class="sum-warning" id="pointSumDisplay"></div>
   <button class="main-button" onclick="saveRecord()">保存</button>
 </div>
 <div class="form-section rate-box">
+  <div class="section-title"><h2>換算レート</h2><span class="badge">pt → 円</span></div>
   <label for="rateInput">レート（1ポイントあたり）：</label>
   <div class="rate-input-wrapper">
     <input id="rateInput" oninput="updateSessionTable()" type="number" value="50"/>
@@ -61,8 +267,8 @@
   </div>
 </div>
 <div class="history-section">
-  <h2>この回の対局履歴</h2>
-  <div id="sessionHistory">履歴はまだありません。</div>
+  <div class="section-title"><h2>この回の対局履歴</h2><span class="badge">横スクロールOK</span></div>
+  <div class="table-wrap"><div id="sessionHistory">履歴はまだありません。</div></div>
 </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -255,5 +461,6 @@ window.saveRecord = saveRecord;
     }
   });
 </script>
+</div>
 </body>
 </html>

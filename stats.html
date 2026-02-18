@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -110,6 +111,33 @@
     tr.low-sample td { background-color: #fafafa; color:#666; }
     tr.pair-selected td { background-color: #fff7d6; }
     tr.pair-selected td:first-child { background-color: #fff2b3; }
+
+    /* Pair filter responsive fix */
+    #pairFilterBox .pair-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:center;
+      align-items:center;
+    }
+    @media (max-width: 480px){
+      #pairFilterBox .pair-row{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      #pairFilterBox .pair-row strong{
+        align-self:flex-start;
+      }
+      #pairFilterBox select,
+      #pairFilterBox button{
+        width:100%;
+        max-width: 420px;
+      }
+      #pairFilterBox #pairStatus{
+        align-self:flex-start;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -123,7 +151,7 @@
 
   <!-- 2人対戦フィルター -->
   <div class="filter-box" id="pairFilterBox" style="max-width: 780px;">
-    <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;">
+    <div class="pair-row">
       <strong>2人対戦フィルター：</strong>
       <select id="pairA" style="padding:8px; font-size:14px;">
         <option value="">--プレイヤーA--</option>
@@ -316,6 +344,7 @@
               tobiCount: 0,
               pointHistory: [],
               rankHistory: [],
+              dateHistory: [],
               vs: {},
               sessionHistory: [],
               sessionSums: []
@@ -339,6 +368,9 @@
             d.totalRankPoint += rankPt;
             d.pointHistory.push(p.point);
             d.rankHistory.push(rank);
+
+            // 日付履歴（グラフ用）
+            d.dateHistory.push(game.date || session.title || '');
 
             if (rank === 1)      d.tops++;
             else if (rank === 2) d.seconds++;
@@ -596,10 +628,18 @@
         cum.push(next.toFixed(1));
         return next;
       }, 0);
-      const labels = cum.map((_, i) => `#${i+1}`);
+      const labels = cum.map((_, i) => {
+        const d = (p.dateHistory && p.dateHistory[i]) ? String(p.dateHistory[i]) : '';
+        // YYYY-MM-DD -> M/D に整形（失敗したらそのまま）
+        let short = d;
+        const m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) short = `${parseInt(m[2],10)}/${parseInt(m[3],10)}`;
+        return `${short} (#${i+1})`;
+      });
 
       const ctx = document.getElementById("pointChart").getContext("2d");
-      new Chart(ctx, {
+      if (window._pointChartInstance) window._pointChartInstance.destroy();
+      window._pointChartInstance = new Chart(ctx, {
         type: "line",
         data: {
           labels: labels,
@@ -612,6 +652,17 @@
         },
         options: {
           responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const idx = items?.[0]?.dataIndex ?? 0;
+                  const full = (p.dateHistory && p.dateHistory[idx]) ? String(p.dateHistory[idx]) : '';
+                  return full ? `日付: ${full}` : `#${idx+1}`;
+                }
+              }
+            }
+          },
           scales: {
             x: { title: { display: true, text: "対局数" } },
             y: { title: { display: true, text: "累積ポイント" } }
