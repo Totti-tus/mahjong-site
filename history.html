@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -194,7 +195,8 @@ details[open] .details-content{ display:block; }
   width:100%;
   border-collapse: separate;
   border-spacing:0;
-  min-width: 640px;
+  min-width: 0;
+  table-layout: fixed;
 }
 .game-table th, .game-table td{
   padding:10px 10px;
@@ -203,6 +205,8 @@ details[open] .details-content{ display:block; }
   border-bottom:1px solid rgba(15,23,42,.08);
   border-right:1px solid rgba(15,23,42,.06);
   white-space:nowrap;
+  overflow:hidden;
+  text-overflow: ellipsis;
 }
 .game-table th:last-child, .game-table td:last-child{ border-right:none; }
 .game-table thead th{
@@ -292,6 +296,25 @@ details[open] .details-content{ display:block; }
 }
 .delete-game-btn:hover{ transform: translateY(-1px); }
 .delete-game-btn:active{ transform: translateY(0px) scale(.99); }
+
+
+.edit-game-btn{
+  background: rgba(59,130,246,.10);
+  border:1px solid rgba(59,130,246,.22);
+  color:#1d4ed8;
+  box-shadow: 0 10px 22px rgba(59,130,246,.12);
+  padding:8px 10px;
+  border-radius: 11px;
+  cursor:pointer;
+  font-weight:700;
+}
+.edit-game-btn:hover{ transform: translateY(-1px); }
+.edit-game-btn:active{ transform: translateY(0px) scale(.99); }
+.edit-game-btn, .delete-game-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
 
 @media (max-width: 720px){
   body{ padding:18px 12px 32px; }
@@ -404,6 +427,34 @@ details[open] .details-content{ display:block; }
       .modal header h4{ font-size:15px; }
     }
 
+    /* --- Mobile: fit table without horizontal scroll --- */
+    @media (max-width: 480px){
+      .table-wrap{ overflow: visible; }
+      .game-table{ width:100%; }
+      .game-table th, .game-table td{
+        padding:6px 4px;
+        font-size:11px;
+      }
+      .game-table thead th{ position: sticky; top:0; }
+      .game-table thead tr:nth-child(2) th{ top: 32px; }
+      .game-table thead th{
+        white-space: normal;
+        line-height: 1.15;
+      }
+      .game-table tbody td{ white-space: nowrap; }
+      .game-table th:first-child, .game-table td:first-child{ width: 44px; }
+      .game-table th:last-child, .game-table td:last-child{ width: 60px; }
+      .edit-game-btn, .delete-game-btn{
+        padding:6px 8px;
+        font-size:11px;
+        border-radius:10px;
+      }
+      .edit-game-btn .btn-label,
+      .delete-game-btn .btn-label{ display:none; }
+      .edit-game-btn .btn-ico,
+      .delete-game-btn .btn-ico{ font-size:12px; }
+    }
+
   </style>
 </head>
 <body>
@@ -500,7 +551,7 @@ details[open] .details-content{ display:block; }
             const minus = pl && pl.point<0?pl.point.toFixed(1):'';
             html += `<td>${plus}</td><td>${minus}</td>`;
           });
-          html += `<td><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="edit-game-btn" data-sid="${session.id}" data-idx="${oidx}">編集</button><button class="delete-game-btn" data-sid="${session.id}" data-idx="${oidx}">削除</button></div></td></tr>`;
+          html += `<td><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="edit-game-btn" data-sid="${session.id}" data-idx="${oidx}" aria-label="編集"><span class="btn-ico">✎</span><span class="btn-label">編集</span></button><button class="delete-game-btn" data-sid="${session.id}" data-idx="${oidx}" aria-label="削除"><span class="btn-ico">🗑</span><span class="btn-label">削除</span></button></div></td></tr>`;
         });
         html += '<tr class="total-row"><th>合計</th>';
         participantIds.forEach(id => {

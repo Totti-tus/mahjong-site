@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -112,6 +113,98 @@
     tr.pair-selected td { background-color: #fff7d6; }
     tr.pair-selected td:first-child { background-color: #fff2b3; }
 
+    /* 30半荘未満グループの境界を分かりやすく */
+    tr.group-divider td{
+      background: #e9eef7;
+      color:#111827;
+      font-weight: bold;
+      text-align: left;
+      padding: 10px 12px;
+      border-top: 3px solid #94a3b8;
+      border-bottom: 3px solid #94a3b8;
+    }
+    /* 30未満は少しだけ色味を変えて「別グループ感」を出す */
+    tr.low-sample td{
+      background-color: #f7f7fb;
+      color:#6b7280;
+    }
+
+    /* スマホ向け：一覧モーダル */
+    .float-list-btn{
+      position: fixed;
+      right: 16px;
+      bottom: 18px;
+      z-index: 50;
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: none;
+      background: #111827;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .float-list-btn:active{ transform: translateY(1px); }
+
+    .modal-backdrop{
+      display:none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 60;
+      padding: 14px;
+    }
+    .modal-backdrop.show{ display:block; }
+    .modal{
+      background: #fff;
+      border-radius: 14px;
+      max-width: 1200px;
+      margin: 0 auto;
+      height: calc(100vh - 28px);
+      display:flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #f9fafb;
+    }
+    .modal-header .left{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .modal-header button{
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background:#fff;
+      cursor:pointer;
+    }
+    .modal-body{
+      flex: 1;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      background:#fff;
+    }
+    .modal-body .clone-wrap{
+      padding: 10px;
+      /* zoomはブラウザ依存だけど、スマホでは直感的に効くことが多い */
+      zoom: var(--z, 0.9);
+      transform-origin: top left;
+    }
+
+    @media (min-width: 721px){
+      /* PCでは浮動ボタンは邪魔になりやすいので非表示 */
+      .float-list-btn{ display:none; }
+    }
+
     /* Pair filter responsive fix */
     #pairFilterBox .pair-row{
       display:flex;
@@ -168,6 +261,9 @@
 
   <button class="main-button" onclick="location.href='index.html'">ホームへ戻る</button>
 
+  <!-- スマホ向け：全体一覧モーダルを開く -->
+  <button id="openList" class="float-list-btn" type="button">一覧</button>
+
   <!-- 集計テーブル -->
   <div class="table-wrapper">
     <table id="statsTable">
@@ -194,6 +290,26 @@
 
   <!-- 詳細表示領域 -->
   <div id="playerDetail"></div>
+
+  <!-- 一覧モーダル -->
+  <div id="listModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="成績一覧">
+      <div class="modal-header">
+        <div class="left">
+          <strong>成績一覧（拡大して閲覧OK）</strong>
+          <label style="font-size:13px; color:#374151; display:flex; gap:8px; align-items:center;">
+            拡大
+            <input id="zoomRange" type="range" min="60" max="140" value="90" style="width:160px;">
+            <span id="zoomLabel" style="min-width:40px; text-align:right;">90%</span>
+          </label>
+        </div>
+        <button id="closeList" type="button">閉じる</button>
+      </div>
+      <div class="modal-body">
+        <div id="tableClone" class="clone-wrap"></div>
+      </div>
+    </div>
+  </div>
 
   <script type="module">
     const MIN_GAMES_FOR_HIGHLIGHT = 30; // 30半荘未満はハイライト除外
@@ -261,6 +377,54 @@
     document.addEventListener("DOMContentLoaded", async () => {
       await loadPlayerNames();
       populatePairSelectors();
+
+      // 一覧モーダル制御（スマホで全体を見やすく）
+      const openBtn = document.getElementById('openList');
+      const modal = document.getElementById('listModal');
+      const closeBtn = document.getElementById('closeList');
+      const zoomRange = document.getElementById('zoomRange');
+      const zoomLabel = document.getElementById('zoomLabel');
+      const cloneWrap = document.getElementById('tableClone');
+
+      const setZoom = (pct) => {
+        const z = Math.max(60, Math.min(140, pct));
+        if (cloneWrap) cloneWrap.style.setProperty('--z', (z/100).toFixed(2));
+        if (zoomLabel) zoomLabel.textContent = `${z}%`;
+        if (zoomRange) zoomRange.value = String(z);
+      };
+
+      if (openBtn && modal) {
+        openBtn.addEventListener('click', () => {
+          refreshTableClone();
+          modal.classList.add('show');
+          modal.setAttribute('aria-hidden', 'false');
+          setZoom(parseInt(zoomRange?.value || '90', 10));
+        });
+      }
+      if (closeBtn && modal) {
+        closeBtn.addEventListener('click', () => {
+          modal.classList.remove('show');
+          modal.setAttribute('aria-hidden', 'true');
+        });
+      }
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+          }
+        });
+      }
+      if (zoomRange) {
+        zoomRange.addEventListener('input', () => setZoom(parseInt(zoomRange.value, 10)));
+      }
+      // Escで閉じる
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal?.classList.contains('show')) {
+          modal.classList.remove('show');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+      });
 
       document.getElementById("startDate").addEventListener("change", filterAndCalculate);
       document.getElementById("endDate").addEventListener("change", filterAndCalculate);
@@ -412,6 +576,19 @@
     }
 
     // テーブル描画
+    // 一覧モーダル：現在のテーブルをクローンして表示
+    function refreshTableClone(){
+      const mount = document.getElementById('tableClone');
+      const src = document.getElementById('statsTable');
+      if (!mount || !src) return;
+      mount.innerHTML = '';
+      const cloned = src.cloneNode(true);
+      cloned.id = 'statsTableClone';
+      cloned.style.marginTop = '0';
+      // clone側は sticky を活かしつつ、横幅はそのまま
+      mount.appendChild(cloned);
+    }
+
     function renderTable() {
       const tbody = document.querySelector("#statsTable tbody");
       tbody.innerHTML = '';
@@ -438,7 +615,17 @@
           return b.totalPoint - a.totalPoint;
         });
 
+      let dividerInserted = false;
       players.forEach(p => {
+        // 30未満グループの直前に区切り（2人対戦フィルター中は出さない）
+        if (!dividerInserted && !activePairA && !activePairB && p.games < MIN_GAMES_FOR_HIGHLIGHT) {
+          const divTr = document.createElement('tr');
+          divTr.className = 'group-divider';
+          divTr.innerHTML = `<td colspan="13">30半荘未満（参考）</td>`;
+          tbody.appendChild(divTr);
+          dividerInserted = true;
+        }
+
         const avgDiff    = (p.totalPoint - p.totalRankPoint) / p.games;
         const avgFinal   = (30000 + avgDiff * 1000).toFixed(0);
         const avgRank    = (p.totalRank / p.games).toFixed(2);
@@ -473,6 +660,9 @@
 
       applyHighlighting();
 
+      // 一覧モーダル側のテーブルも更新
+      refreshTableClone();
+
       // プレイヤー名クリックで詳細表示
       document.querySelectorAll(".clickable-name").forEach(el => {
         el.addEventListener("click", () => viewPlayerDetail(el.dataset.id));
@@ -482,7 +672,7 @@
     // 最大/最小ハイライト
    function applyHighlighting() {
   const table   = document.getElementById("statsTable");
-  const rows    = Array.from(table.querySelectorAll("tbody tr"));
+  const rows    = Array.from(table.querySelectorAll("tbody tr")).filter(r => !r.classList.contains('group-divider'));
   const headers = Array.from(table.querySelectorAll("thead th")).map(th => th.textContent.trim());
 
   // 列インデックス取得
