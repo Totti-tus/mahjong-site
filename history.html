@@ -1,46 +1,749 @@
-/* テーブル全体 */
-.game-table {
-  width: 100%;
+
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>対戦履歴一覧</title>
+  <style>
+:root{
+  --bg1:#f6f9ff;
+  --bg2:#eef4ff;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --line:rgba(15,23,42,.10);
+  --shadow:0 10px 30px rgba(15,23,42,.10);
+  --shadow2:0 6px 16px rgba(15,23,42,.08);
+  --accent:#3b82f6;
+  --accent2:#6366f1;
+  --danger:#ef4444;
+  --success:#22c55e;
+  --gold:#d4af37;
+  --radius:18px;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 800px at 10% -10%, rgba(99,102,241,.22), transparent 55%),
+    radial-gradient(1000px 700px at 90% 0%, rgba(59,130,246,.18), transparent 55%),
+    linear-gradient(180deg, var(--bg1), var(--bg2));
+  padding:24px 16px 40px;
+}
+
+.page{
+  max-width:980px;
+  margin:0 auto;
+}
+
+.header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin: 6px 0 14px;
+}
+
+h1{
+  margin:0;
+  font-size: clamp(22px, 2.6vw, 30px);
+  letter-spacing:.02em;
+}
+
+.sub{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.top-nav{ display:flex; justify-content:flex-end; }
+.top-nav button{
+  appearance:none;
+  border:1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.75));
+  color:var(--text);
+  padding:10px 14px;
+  border-radius:999px;
+  cursor:pointer;
+  box-shadow: var(--shadow2);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  font-weight:600;
+}
+.top-nav button:hover{ transform: translateY(-1px); box-shadow: var(--shadow); border-color: rgba(59,130,246,.25); }
+.top-nav button:active{ transform: translateY(0px) scale(.99); }
+
+.panel{
+  background: rgba(255,255,255,.72);
+  border:1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow2);
+  padding:14px;
+}
+
+.filter-box{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:flex-start;
+  flex-wrap:wrap;
+  margin: 14px 0 18px;
+}
+.filter-box label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  font-size:13px;
+}
+.filter-box input{
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.9);
+  font-size:14px;
+  color:var(--text);
+  outline:none;
+  min-height:40px;
+}
+.filter-box input:focus{
+  border-color: rgba(59,130,246,.45);
+  box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+}
+
+.message{
+  text-align:center;
+  color:var(--muted);
+  font-size:15px;
+  margin: 28px 0 10px;
+}
+
+details.session{
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow2);
+  margin: 14px 0;
+  border:1px solid var(--line);
+  overflow:hidden;
+}
+
+summary.session-header{
+  display:flex;
+  gap:12px;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 16px;
+  cursor:pointer;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.78));
+}
+summary.session-header::-webkit-details-marker{ display:none; }
+summary.session-header::before{
+  content:"";
+  width:22px; height:22px;
+  border-radius:10px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(99,102,241,.45), rgba(59,130,246,.15) 55%, transparent 56%),
+    linear-gradient(135deg, rgba(99,102,241,.25), rgba(59,130,246,.15));
+  border:1px solid rgba(59,130,246,.22);
+  box-shadow: 0 8px 18px rgba(59,130,246,.18);
+  flex: 0 0 auto;
+}
+details[open] summary.session-header::before{
+  background:
+    radial-gradient(circle at 30% 30%, rgba(34,197,94,.40), rgba(34,197,94,.12) 55%, transparent 56%),
+    linear-gradient(135deg, rgba(34,197,94,.22), rgba(59,130,246,.10));
+  border-color: rgba(34,197,94,.25);
+  box-shadow: 0 8px 18px rgba(34,197,94,.18);
+}
+summary h3{
+  margin:0;
+  font-size:16px;
+  line-height:1.25;
+}
+.summary-box{
+  color:var(--muted);
+  font-size:12.5px;
+  line-height:1.35;
+  padding:8px 10px;
+  border-radius:14px;
+  border:1px solid rgba(59,130,246,.20);
+  background: linear-gradient(180deg, rgba(59,130,246,.12), rgba(99,102,241,.06));
+  max-width: 54%;
+  text-align:left;
+  overflow:hidden;
+}
+.details-content{
+  padding: 14px 16px 16px;
+  display:none;
+}
+details[open] .details-content{ display:block; }
+
+.table-wrap{
+  width:100%;
+  overflow:auto;
+  border-radius: 14px;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.9);
+}
+.game-table{
+  width:100%;
+  border-collapse: separate;
+  border-spacing:0;
+  min-width: 0;
   table-layout: fixed;
-  font-size: 12px;
 }
-
-/* 回数列 */
-.game-table th:first-child,
-.game-table td:first-child {
-  width: 32px;
-  font-weight: bold;
-  background: #f3f3f3;
+.game-table th, .game-table td{
+  padding:10px 10px;
+  text-align:center;
+  font-size:13.5px;
+  border-bottom:1px solid rgba(15,23,42,.08);
+  border-right:1px solid rgba(15,23,42,.06);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  line-height:1.15;
+  font-variant-numeric: tabular-nums;
 }
-
-/* 操作列 */
-.game-table th:last-child,
-.game-table td:last-child {
-  width: 56px;
+.game-table th:last-child, .game-table td:last-child{ border-right:none; }
+.game-table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(248,250,252,.98), rgba(241,245,249,.92));
+  color: #334155;
+  font-weight:700;
 }
-
-/* プレイヤー列（均等割り） */
-.game-table th:not(:first-child):not(:last-child),
-.game-table td:not(:first-child):not(:last-child) {
-  width: auto;
+.game-table thead tr:nth-child(2) th{
+  top: 40px;
+  z-index: 1;
+  font-weight:600;
 }
+.game-table tbody tr:nth-child(even){ background: rgba(15,23,42,.02); }
 
-/* 数値を省略させない */
-.game-table td {
-  white-space: nowrap;
+/* ---- Column balance (desktop) ---- */
+.game-table thead th:first-child,
+.game-table tbody td:first-child,
+.game-table tbody th:first-child{
+  width:56px;
+  background: rgba(15,23,42,.03);
+  font-weight:800;
+}
+.game-table thead th:last-child,
+.game-table tbody td:last-child{ width:80px; }
+
+/* + / - columns (subtle) */
+.game-table thead tr:nth-child(2) th:nth-child(even):not(:last-child),
+.game-table tbody td:nth-child(even):not(:last-child){
+  background: rgba(59,130,246,.05);
+}
+.game-table thead tr:nth-child(2) th:nth-child(odd):not(:first-child):not(:last-child),
+.game-table tbody td:nth-child(odd):not(:first-child):not(:last-child){
+  background: rgba(239,68,68,.04);
+}
+.game-table tbody td:nth-child(even):not(:last-child){ color:#1d4ed8; font-weight:700; }
+.game-table tbody td:nth-child(odd):not(:first-child):not(:last-child){ color:#b91c1c; font-weight:700; }
+
+/* 数字が切れないように（基本は表幅で吸収。どうしても狭い時は横スクロール） */
+.game-table tbody td:not(:last-child){
   overflow: visible;
   text-overflow: clip;
 }
+.game-table tbody tr:hover{ background: rgba(59,130,246,.06); }
+.game-table tr.total-row{
+  background: rgba(59,130,246,.10);
+  font-weight:800;
+}
+.game-table tr.total-row th,
+.game-table tr.total-row td{
+  border-bottom:none;
+}
 
-/* プレイヤー列の色分け */
-.game-table th:nth-child(2),
-.game-table td:nth-child(2) { background: #f9fbff; }
+.add-game-form{
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top:1px dashed rgba(15,23,42,.14);
+  display:grid;
+  gap:10px;
+}
+.add-game-form > input[type="date"]{
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.9);
+  min-height:40px;
+  width: min(260px, 100%);
+}
+.player-entry{
+  display:grid;
+  grid-template-columns: 1fr 140px;
+  gap:10px;
+  align-items:center;
+  margin:0;
+}
+.player-entry select, .player-entry input{
+  padding:10px 10px;
+  font-size:14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background: rgba(255,255,255,.95);
+  min-height:40px;
+  outline:none;
+}
+.player-entry select:focus, .player-entry input:focus{
+  border-color: rgba(59,130,246,.45);
+  box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+}
 
-.game-table th:nth-child(3),
-.game-table td:nth-child(3) { background: #fff9f9; }
+.add-game-btn, .delete-game-btn{
+  padding:10px 12px;
+  border:none;
+  border-radius: 12px;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:700;
+  transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+}
+.add-game-btn{
+  background: linear-gradient(135deg, rgba(34,197,94,.95), rgba(34,197,94,.75));
+  color:#063b1a;
+  box-shadow: 0 10px 22px rgba(34,197,94,.18);
+  justify-self:start;
+}
+.add-game-btn:hover{ transform: translateY(-1px); filter: saturate(1.05); }
+.add-game-btn:active{ transform: translateY(0px) scale(.99); }
 
-.game-table th:nth-child(4),
-.game-table td:nth-child(4) { background: #f9fff9; }
+.delete-game-btn{
+  background: linear-gradient(135deg, rgba(239,68,68,.95), rgba(239,68,68,.74));
+  color:#3b0a0a;
+  box-shadow: 0 10px 22px rgba(239,68,68,.16);
+  padding:8px 10px;
+  border-radius: 11px;
+}
+.delete-game-btn:hover{ transform: translateY(-1px); }
+.delete-game-btn:active{ transform: translateY(0px) scale(.99); }
 
-.game-table th:nth-child(5),
-.game-table td:nth-child(5) { background: #fffdf5; }
+
+.edit-game-btn{
+  background: rgba(59,130,246,.10);
+  border:1px solid rgba(59,130,246,.22);
+  color:#1d4ed8;
+  box-shadow: 0 10px 22px rgba(59,130,246,.12);
+  padding:8px 10px;
+  border-radius: 11px;
+  cursor:pointer;
+  font-weight:700;
+}
+.edit-game-btn:hover{ transform: translateY(-1px); }
+.edit-game-btn:active{ transform: translateY(0px) scale(.99); }
+.edit-game-btn, .delete-game-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+
+@media (max-width: 720px){
+  body{ padding:18px 12px 32px; }
+  .header{ align-items:flex-start; flex-direction:column; }
+  .top-nav{ width:100%; justify-content:flex-start; }
+  .summary-box{ max-width: 100%; width:100%; }
+  summary.session-header{ flex-wrap:wrap; align-items:flex-start; }
+  summary h3{ width:100%; }
+  .player-entry{ grid-template-columns: 1fr; }
+  .add-game-btn{ width:100%; justify-self:stretch; }
+  .filter-box label{ width:100%; justify-content:space-between; }
+  .filter-box input{ width: 100%; }
+}
+  
+    /* --- Improve summary readability on collapsed tabs --- */
+    .session-header .summary-box{
+      color:#0f172a;
+      font-weight:600;
+      opacity:1;
+    }
+    .session-header .summary-box br{ line-height:1.35; }
+    @media (max-width: 480px){
+      .session-header .summary-box{
+        font-size: 12px;
+        font-weight: 600;
+      }
+    }
+
+    /* --- Edit modal --- */
+    .modal-backdrop{
+      position:fixed; inset:0;
+      background: rgba(15, 23, 42, .35);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      z-index:9999;
+    }
+    .modal{
+      width:min(560px, 100%);
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(15,23,42,.08);
+      border-radius:18px;
+      box-shadow: 0 18px 50px rgba(15,23,42,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+    .modal header{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px;
+      background: linear-gradient(135deg, rgba(37,99,235,.10), rgba(99,102,241,.10));
+      border-bottom: 1px solid rgba(15,23,42,.08);
+    }
+    .modal header h4{ margin:0; font-size:16px; color:#0f172a; }
+    .modal header button{
+      border:1px solid rgba(15,23,42,.12);
+      background: rgba(255,255,255,.75);
+      border-radius:999px;
+      padding:6px 10px;
+      cursor:pointer;
+    }
+    .modal .content{ padding:14px 16px 16px; }
+    .modal .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    .modal label{
+      display:block;
+      font-size:12px;
+      color:#334155;
+      margin-bottom:6px;
+      font-weight:700;
+    }
+    .modal input[type="number"], .modal input[type="date"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.14);
+      background: rgba(255,255,255,.9);
+      outline:none;
+    }
+    .modal .actions{
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      margin-top:14px;
+    }
+    .btn{
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:700;
+      cursor:pointer;
+      border:1px solid rgba(15,23,42,.12);
+      background: rgba(255,255,255,.8);
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(37,99,235,.92), rgba(99,102,241,.92));
+      color:white;
+      border-color: rgba(37,99,235,.35);
+    }
+    .btn.danger{
+      background: rgba(239,68,68,.10);
+      border-color: rgba(239,68,68,.22);
+      color:#b91c1c;
+    }
+    @media (max-width: 520px){
+      .modal .grid{ grid-template-columns: 1fr; }
+      .modal header h4{ font-size:15px; }
+    }
+
+    /* --- Mobile: fit table without horizontal scroll --- */
+    @media (max-width: 480px){
+  /* Mobile: 多少の横スクロールは許容して、数字が潰れないバランスに */
+  .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling: touch; }
+  .game-table{ width:100%; min-width: 560px; }
+      .game-table th, .game-table td{
+    padding:6px 5px;
+        font-size:11px;
+      }
+      .game-table thead th{ position: sticky; top:0; }
+      .game-table thead tr:nth-child(2) th{ top: 32px; }
+      .game-table thead th{
+        white-space: normal;
+        line-height: 1.15;
+      }
+      .game-table tbody td{ white-space: nowrap; }
+  .game-table th:first-child, .game-table td:first-child{ width: 40px; }
+  .game-table th:last-child, .game-table td:last-child{ width: 64px; }
+      .edit-game-btn, .delete-game-btn{
+        padding:6px 8px;
+        font-size:11px;
+        border-radius:10px;
+      }
+      .edit-game-btn .btn-label,
+      .delete-game-btn .btn-label{ display:none; }
+      .edit-game-btn .btn-ico,
+      .delete-game-btn .btn-ico{ font-size:12px; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="page">
+  <div class="header">
+    <div>
+      <h1>対戦履歴一覧</h1>
+      <div class="sub">セッションごとの半荘履歴を確認・追加・削除できます</div>
+    </div>
+    <div class="top-nav">
+    <button onclick="location.href='index.html'">ホームに戻る</button>
+  </div>
+  </div>
+
+  <div class="panel">
+    <div class="filter-box">
+    <label>開始日：<input id="startDate" type="date"></label>
+    <label>終了日：<input id="endDate" type="date"></label>
+  </div>
+  </div>
+
+  <div id="historyContainer"><p class="message">データをロード中...</p></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBdceijbs690Dm28wjH3Y8fEMwW7gQ6bdk",
+      authDomain: "mahjong-app-2e2e9.firebaseapp.com",
+      projectId: "mahjong-app-2e2e9",
+      storageBucket: "mahjong-app-2e2e9.appspot.com",
+      messagingSenderId: "440425002404",
+      appId: "1:440425002404:web:fc5d188d05d4fb26b6fd31"
+    };
+    initializeApp(firebaseConfig);
+    const db = getFirestore();
+    signInAnonymously(getAuth()).catch(console.error);
+
+    let allSessions = [];
+    const playersMap = {};
+
+    async function loadPlayers() {
+      const snap = await getDocs(collection(db, 'players'));
+      snap.forEach(d => { const p = d.data(); playersMap[p.id] = p.name; });
+    }
+
+    function render() {
+      const container = document.getElementById('historyContainer');
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      const sessions = allSessions
+        .map(s => ({
+          id: s.id,
+          title: s.title,
+          games: s.games
+            .filter(g => (!start || g.date >= start) && (!end || g.date <= end))
+            .sort((a, b) => a.date.localeCompare(b.date))
+        }))
+        .filter(s => s.games.length)
+        .sort((a, b) => b.title.localeCompare(a.title));
+
+      if (!sessions.length) {
+        container.innerHTML = '<p class="message">表示できるセッションがありません。</p>';
+        return;
+      }
+      container.innerHTML = '';
+
+      sessions.forEach(session => {
+        const participantIds = [...new Set(session.games.flatMap(g => g.players.map(p => p.id)))];
+        const sumPts = {};
+        participantIds.forEach(id => sumPts[id] = 0);
+        session.games.forEach(g => g.players.forEach(p => sumPts[p.id] += p.point));
+        const summaryText = participantIds
+          .map(id => `${playersMap[id]||id}: ${sumPts[id]>=0?'+':''}${sumPts[id].toFixed(1)}pt`)
+          .join('<br>');
+
+        let html = '<details class="session">';
+        html += `<summary class="session-header"><h3>${session.title}</h3><div class="summary-box">${summaryText}</div></summary>`;
+        html += '<div class="details-content">';
+        html += '<div class="table-wrap"><table class="game-table"><thead><tr><th>回数</th>';
+        participantIds.forEach(id => html += `<th colspan="2">${playersMap[id]||id}</th>`);
+        html += '<th>操作</th></tr><tr><th></th>';
+        participantIds.forEach(_ => html += '<th>＋</th><th>－</th>');
+        html += '<th></th></tr></thead><tbody>';
+        session.games.forEach((g,i) => {
+          const oidx = (allSessions.find(s=>s.id===session.id)?.games||[]).indexOf(g);
+
+          html += `<tr><td>${i+1}</td>`;
+          participantIds.forEach(id => {
+            const pl = g.players.find(p => p.id===id);
+            const plus = pl && pl.point>0?`+${pl.point.toFixed(1)}`:'';
+            const minus = pl && pl.point<0?pl.point.toFixed(1):'';
+            html += `<td>${plus}</td><td>${minus}</td>`;
+          });
+          html += `<td><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="edit-game-btn" data-sid="${session.id}" data-idx="${oidx}" aria-label="編集"><span class="btn-ico">✎</span><span class="btn-label">編集</span></button><button class="delete-game-btn" data-sid="${session.id}" data-idx="${oidx}" aria-label="削除"><span class="btn-ico">🗑</span><span class="btn-label">削除</span></button></div></td></tr>`;
+        });
+        html += '<tr class="total-row"><th>合計</th>';
+        participantIds.forEach(id => {
+          const val = sumPts[id].toFixed(1);
+          const plus = sumPts[id]>0?`+${val}`:'';
+          const minus = sumPts[id]<0?val:'';
+          html += `<td>${plus}</td><td>${minus}</td>`;
+        });
+        html += '<td></td></tr></tbody></table></div>';
+        html += `<form class="add-game-form" data-sid="${session.id}"><input type="date" name="date" required>`;
+        participantIds.forEach((id,idx) => {
+          html += '<div class="player-entry">';
+          html += `<select name="player${idx}">`;
+          participantIds.forEach(pid => html += `<option value="${pid}">${playersMap[pid]}</option>`);
+          html += '</select>';
+          html += `<input type="number" name="point${idx}" placeholder="点数" required>`;
+          html += '</div>';
+        });
+        html += '<button type="submit" class="add-game-btn">半荘追加</button></form>';
+        html += '</div></details>';
+        container.insertAdjacentHTML('beforeend', html);
+      });
+      document.querySelectorAll('.edit-game-btn').forEach(btn => btn.onclick=(e)=>{
+        const sid = e.target.dataset.sid;
+        const idx = +e.target.dataset.idx;
+        // participant IDs for this session at render time
+        const sess = allSessions.find(s=>s.id===sid);
+        const games = (sess?.games||[]).filter(g => (!start || g.date >= start) && (!end || g.date <= end)).sort((a,b)=>a.date.localeCompare(b.date));
+        const participantIds = [...new Set(games.flatMap(g=>g.players.map(p=>p.id)))];
+        openEditModal(sid, idx, participantIds);
+      });
+      document.querySelectorAll('.delete-game-btn').forEach(btn => btn.onclick=deleteGame);
+      document.querySelectorAll('.add-game-form').forEach(f => f.onsubmit=addGame);
+    }
+
+    async function addGame(e) {
+      e.preventDefault(); const f = e.target;
+      const sid = f.dataset.sid; const date = f.date.value;
+      const players = [];
+      [...f.elements].filter(el=>el.name.startsWith('player')).forEach((sel,idx)=>{
+        players.push({id: sel.value, point: parseFloat(f[`point${idx}`].value)});
+      });
+      const sess = allSessions.find(s=>s.id===sid);
+      sess.games.push({date, players});
+      await updateDoc(doc(db,'sessions',sid),{games:sess.games});
+      render();
+    }
+
+    
+    // --- Edit functionality (modal) ---
+    const editBackdrop = document.getElementById('editModalBackdrop');
+    const editForm = document.getElementById('editForm');
+    const editDate = document.getElementById('editDate');
+    const editGrid = document.getElementById('editPointsGrid');
+    const editCloseBtn = document.getElementById('editModalCloseBtn');
+    const editCancelBtn = document.getElementById('editCancelBtn');
+
+    let editing = { sid: null, idx: null, participantIds: [] };
+
+    function openEditModal(sid, idx, participantIds){
+      const sess = allSessions.find(s=>s.id===sid);
+      if(!sess) return;
+      const game = sess.games[idx];
+      if(!game) return;
+
+      editing = { sid, idx, participantIds: [...participantIds] };
+
+      // populate
+      editDate.value = game.date || '';
+      editGrid.innerHTML = '';
+      participantIds.forEach(pid=>{
+        const pl = (game.players||[]).find(p=>p.id===pid);
+        const val = pl ? pl.point : 0;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `
+          <label>${playersMap[pid]||pid}</label>
+          <input type="number" step="0.1" inputmode="decimal" name="p_${pid}" value="${Number(val).toFixed(1)}" required>
+        `;
+        editGrid.appendChild(wrap);
+      });
+
+      editBackdrop.style.display = 'flex';
+      editBackdrop.setAttribute('aria-hidden','false');
+      // focus
+      setTimeout(()=>editDate.focus(), 50);
+    }
+
+    function closeEditModal(){
+      editBackdrop.style.display = 'none';
+      editBackdrop.setAttribute('aria-hidden','true');
+      editing = { sid: null, idx: null, participantIds: [] };
+    }
+
+    editBackdrop.addEventListener('click', (e)=>{
+      if(e.target === editBackdrop) closeEditModal();
+    });
+    editCloseBtn.addEventListener('click', closeEditModal);
+    editCancelBtn.addEventListener('click', closeEditModal);
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape' && editBackdrop.style.display === 'flex') closeEditModal();
+    });
+
+    editForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const { sid, idx, participantIds } = editing;
+      const sess = allSessions.find(s=>s.id===sid);
+      if(!sess || !sess.games[idx]) return;
+
+      const updatedPlayers = participantIds.map(pid=>{
+        const input = editForm.querySelector(`input[name="p_${CSS.escape(pid)}"]`);
+        const point = input ? parseFloat(input.value) : 0;
+        return { id: pid, point: Number.isFinite(point) ? point : 0 };
+      });
+
+      sess.games[idx] = { ...sess.games[idx], date: editDate.value, players: updatedPlayers };
+      await updateDoc(doc(db,'sessions',sid),{ games: sess.games });
+      closeEditModal();
+      render();
+    });
+
+
+    function deleteGame(e) {
+      if(!confirm('本当に削除しますか？')) return;
+      const sid = e.target.dataset.sid; const idx = +e.target.dataset.idx;
+      const sess = allSessions.find(s=>s.id===sid);
+      sess.games.splice(idx,1);
+      updateDoc(doc(db,'sessions',sid),{games:sess.games}).then(render);
+    }
+
+    (async()=>{
+      await loadPlayers();
+      onSnapshot(collection(db,'sessions'),snap=>{allSessions=snap.docs.map(d=>({id:d.id,...d.data()}));render();});
+      document.getElementById('startDate').addEventListener('change',render);
+      document.getElementById('endDate').addEventListener('change',render);
+    })();
+  </script>
+  </div>
+
+  <!-- Edit Modal (UI only; functionality in JS) -->
+  <div id="editModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <header>
+        <h4 id="editModalTitle">半荘を編集</h4>
+        <button type="button" id="editModalCloseBtn" aria-label="閉じる">✕</button>
+      </header>
+      <div class="content">
+        <form id="editForm">
+          <div style="margin-bottom:12px;">
+            <label for="editDate">日付</label>
+            <input id="editDate" name="date" type="date" required>
+          </div>
+          <div id="editPointsGrid" class="grid"></div>
+          <div class="actions">
+            <button type="button" class="btn" id="editCancelBtn">キャンセル</button>
+            <button type="submit" class="btn primary">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
