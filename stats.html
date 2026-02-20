@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -272,6 +273,7 @@
           <th>プレイヤー</th>
           <th>対局数</th>
           <th>合計ポイント</th>
+          <th>素点合計</th>
           <th>1位</th>
           <th>2位</th>
           <th>3位</th>
@@ -530,6 +532,7 @@
               totalRank: 0,
               totalPoint: 0,
               totalRankPoint: 0,
+              totalRawPoint: 0,
               tobiCount: 0,
               pointHistory: [],
               rankHistory: [],
@@ -542,8 +545,8 @@
             const rank = idx + 1;
             const rankPt = rankPointMap[rank];
             const rawDiff = p.point - rankPt;
+            d.totalRawPoint += rawDiff;
 
-            
             // ゲームごとに
             if (p.point <= -60) {
               d.tobiCount++;
@@ -646,7 +649,7 @@
         if (!dividerInserted && !activePairA && !activePairB && p.games < MIN_GAMES_FOR_HIGHLIGHT) {
           const divTr = document.createElement('tr');
           divTr.className = 'group-divider';
-          divTr.innerHTML = `<td colspan="14">30半荘未満（参考）</td>`;
+          divTr.innerHTML = `<td colspan="15">30半荘未満（参考）</td>`;
           tbody.appendChild(divTr);
           dividerInserted = true;
         }
@@ -670,6 +673,7 @@
           `<td><span class="clickable-name" data-id="${p.id}">${p.name}</span></td>` +
           `<td>${p.games}</td>` +
           `<td>${p.totalPoint>=0?'+':''}${p.totalPoint.toFixed(1)}</td>` +
+          `<td>${p.totalRawPoint>=0?'+':''}${p.totalRawPoint.toFixed(1)}</td>` +
           `<td>${p.tops}<br><small>${topsRate}</small></td>` +
           `<td>${p.seconds}<br><small>${secRate}</small></td>` +
           `<td>${p.thirds}<br><small>${thirdRate}</small></td>` +
@@ -792,7 +796,7 @@
           <p>
             🀄 対局数：${p.games} 回<br>
             🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>
-            🏁 順位点pt合計：${p.totalRankPoint.toFixed(0)} pt<br>
+            🧾 素点合計：${p.totalRawPoint.toFixed(1)} pt<br>
             📈 平均差分：${avgDiff} pt<br>
             🎯 終局時平均点：${avgFinal} pt<br>
             🧮 平均着順：${avgRank} 位<br>
