@@ -272,6 +272,7 @@
           <th>プレイヤー</th>
           <th>対局数</th>
           <th>合計ポイント</th>
+          <th>順位点pt合計</th>
           <th>1位</th>
           <th>2位</th>
           <th>3位</th>
@@ -296,11 +297,11 @@
     <div class="modal" role="dialog" aria-modal="true" aria-label="成績一覧">
       <div class="modal-header">
         <div class="left">
-          <strong>成績一覧（拡大して閲覧OK）</strong>
+          <strong>成績一覧（全体表示）</strong>
           <label style="font-size:13px; color:#374151; display:flex; gap:8px; align-items:center;">
-            拡大
-            <input id="zoomRange" type="range" min="60" max="140" value="90" style="width:160px;">
-            <span id="zoomLabel" style="min-width:40px; text-align:right;">90%</span>
+            縮小
+            <input id="zoomRange" type="range" min="30" max="100" value="80" style="width:180px;">
+            <span id="zoomLabel" style="min-width:44px; text-align:right;">80%</span>
           </label>
         </div>
         <button id="closeList" type="button">閉じる</button>
@@ -387,10 +388,25 @@
       const cloneWrap = document.getElementById('tableClone');
 
       const setZoom = (pct) => {
-        const z = Math.max(60, Math.min(140, pct));
+        // 縮小のみ（拡大は不要）
+        const z = Math.max(30, Math.min(100, pct));
         if (cloneWrap) cloneWrap.style.setProperty('--z', (z/100).toFixed(2));
         if (zoomLabel) zoomLabel.textContent = `${z}%`;
         if (zoomRange) zoomRange.value = String(z);
+      };
+
+      // 画面幅に「ぴったり入る」縮小率を計算（拡大はしない）
+      const autoFitZoom = () => {
+        const mount = document.getElementById('tableClone');
+        const body = modal?.querySelector('.modal-body');
+        const tbl = mount?.querySelector('table');
+        if (!mount || !body || !tbl) return null;
+        // テーブルは min-width があるので scrollWidth を優先
+        const tableW = tbl.scrollWidth || tbl.getBoundingClientRect().width;
+        const bodyW = body.clientWidth - 20; // 余白
+        if (!tableW || !bodyW) return null;
+        const fit = Math.floor((bodyW / tableW) * 100);
+        return Math.max(30, Math.min(100, fit));
       };
 
       if (openBtn && modal) {
@@ -398,7 +414,10 @@
           refreshTableClone();
           modal.classList.add('show');
           modal.setAttribute('aria-hidden', 'false');
-          setZoom(parseInt(zoomRange?.value || '90', 10));
+          // まずは「横幅ぴったり」を優先
+          const fit = autoFitZoom();
+          if (fit != null) setZoom(fit);
+          else setZoom(parseInt(zoomRange?.value || '80', 10));
         });
       }
       if (closeBtn && modal) {
@@ -418,6 +437,13 @@
       if (zoomRange) {
         zoomRange.addEventListener('input', () => setZoom(parseInt(zoomRange.value, 10)));
       }
+
+      // 端末回転・リサイズ時も「ぴったり」に寄せる
+      window.addEventListener('resize', () => {
+        if (!modal?.classList.contains('show')) return;
+        const fit = autoFitZoom();
+        if (fit != null) setZoom(fit);
+      });
       // Escで閉じる
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && modal?.classList.contains('show')) {
@@ -621,7 +647,7 @@
         if (!dividerInserted && !activePairA && !activePairB && p.games < MIN_GAMES_FOR_HIGHLIGHT) {
           const divTr = document.createElement('tr');
           divTr.className = 'group-divider';
-          divTr.innerHTML = `<td colspan="13">30半荘未満（参考）</td>`;
+          divTr.innerHTML = `<td colspan="14">30半荘未満（参考）</td>`;
           tbody.appendChild(divTr);
           dividerInserted = true;
         }
@@ -645,6 +671,7 @@
           `<td><span class="clickable-name" data-id="${p.id}">${p.name}</span></td>` +
           `<td>${p.games}</td>` +
           `<td>${p.totalPoint>=0?'+':''}${p.totalPoint.toFixed(1)}</td>` +
+          `<td>${p.totalRankPoint>=0?'+':''}${p.totalRankPoint.toFixed(0)}</td>` +
           `<td>${p.tops}<br><small>${topsRate}</small></td>` +
           `<td>${p.seconds}<br><small>${secRate}</small></td>` +
           `<td>${p.thirds}<br><small>${thirdRate}</small></td>` +
@@ -767,6 +794,7 @@
           <p>
             🀄 対局数：${p.games} 回<br>
             🎯 合計ポイント：${p.totalPoint.toFixed(1)} pt<br>
+            🏁 順位点pt合計：${p.totalRankPoint.toFixed(0)} pt<br>
             📈 平均差分：${avgDiff} pt<br>
             🎯 終局時平均点：${avgFinal} pt<br>
             🧮 平均着順：${avgRank} 位<br>
