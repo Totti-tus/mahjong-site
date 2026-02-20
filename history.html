@@ -454,6 +454,52 @@ details[open] .details-content{ display:block; }
       .edit-game-btn .btn-ico,
       .delete-game-btn .btn-ico{ font-size:12px; }
     }
+/* テーブル全体 */
+.game-table {
+  width: 100%;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+/* 回数列 */
+.game-table th:first-child,
+.game-table td:first-child {
+  width: 32px;
+  font-weight: bold;
+  background: #f3f3f3;
+}
+
+/* 操作列 */
+.game-table th:last-child,
+.game-table td:last-child {
+  width: 56px;
+}
+
+/* プレイヤー列（均等割り） */
+.game-table th:not(:first-child):not(:last-child),
+.game-table td:not(:first-child):not(:last-child) {
+  width: auto;
+}
+
+/* 数値を省略させない */
+.game-table td {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* プレイヤー列の色分け */
+.game-table th:nth-child(2),
+.game-table td:nth-child(2) { background: #f9fbff; }
+
+.game-table th:nth-child(3),
+.game-table td:nth-child(3) { background: #fff9f9; }
+
+.game-table th:nth-child(4),
+.game-table td:nth-child(4) { background: #f9fff9; }
+
+.game-table th:nth-child(5),
+.game-table td:nth-child(5) { background: #fffdf5; }
 
   </style>
 </head>
